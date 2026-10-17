@@ -1,0 +1,24 @@
+# ==============================================================================
+# Containerfile for Python AI Engine
+# Target: Linux x86_64 and Linux on IBM Z (s390x)
+# ==============================================================================
+
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install python dependencies
+COPY ai-engine/requirements.txt ./
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy application source
+COPY ai-engine/ ./
+
+EXPOSE 8000
+
+ENTRYPOINT ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

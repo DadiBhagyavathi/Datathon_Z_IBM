@@ -1,0 +1,52 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: secureai-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: secureai
+      POSTGRES_USER: secureai_user
+      POSTGRES_PASSWORD: secureai_pass
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ../data/migrations:/docker-entrypoint-initdb.d:ro
+
+  ai-engine:
+    build:
+      context: ..
+      dockerfile: deployment/Containerfile.ai
+    container_name: secureai-engine
+    restart: unless-stopped
+    environment:
+      AI_ENGINE_PORT: 8000
+      AI_ENGINE_HOST: 0.0.0.0
+      AI_INFERENCE_ADAPTER: mock
+    ports:
+      - "8000:8000"
+
+  backend:
+    build:
+      context: ..
+      dockerfile: deployment/Containerfile.backend
+    container_name: secureai-backend
+    restart: unless-stopped
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: secureai_user
+      DB_PASSWORD: secureai_pass
+      DB_NAME: secureai
+      AI_ENGINE_URL: http://ai-engine:8000
+      BACKEND_PORT: 8080
+    ports:
+      - "8080:8080"
+    depends_on:
+      - postgres
+      - ai-engine
+
+volumes:
+  postgres_data:

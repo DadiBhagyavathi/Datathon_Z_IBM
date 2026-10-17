@@ -1,0 +1,29 @@
+# ==============================================================================
+# Containerfile for Go Security Backend
+# Target: Linux x86_64 and Linux on IBM Z (s390x)
+# ==============================================================================
+
+FROM golang:1.22-alpine AS builder
+
+WORKDIR /app
+
+# Copy module definitions
+COPY backend-go/go.mod ./
+# Download dependencies if go.sum exists
+RUN if [ -f go.sum ]; then go mod download; fi
+
+# Copy source code
+COPY backend-go/ ./
+
+# Build binary
+RUN CGO_ENABLED=0 GOOS=linux go build -o /app/server cmd/api/main.go
+
+# Runtime stage
+FROM alpine:3.19
+
+WORKDIR /app
+COPY --from=builder /app/server /app/server
+
+EXPOSE 8080
+
+ENTRYPOINT ["/app/server"]

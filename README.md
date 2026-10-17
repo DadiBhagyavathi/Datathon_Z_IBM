@@ -1,472 +1,299 @@
-# SecureAI Gateway
-### Privacy-Preserving Enterprise AI on IBM LinuxONE
+# 🛡️ SecureAI Gateway
 
-**IBM Z Datathon 2026 | Theme 2: AI Secured – Innovation Without Exposure**
+[![IBM Z Datathon 2026](https://img.shields.io/badge/IBM%20Z%20Datathon-2026-blue.svg)](https://www.ibm.com/)
+[![Theme](https://img.shields.io/badge/Theme%202-AI%20Secured%3A%20Innovation%20Without%20Exposure-purple.svg)](#)
+[![Architecture](https://img.shields.io/badge/Architecture-Go%20%7C%20Python%20%7C%20React%20%7C%20Postgres-00ADD8.svg)](#)
+[![Deployment Target](https://img.shields.io/badge/Target-IBM%20LinuxONE%20%28s390x%29-lightgrey.svg)](#)
+[![License](https://img.shields.io/badge/License-Apache%202.0-green.svg)](LICENSE)
 
-> **Project Status:** Proposed Proof of Concept — features will be marked as implemented only after development and testing.
+> **SecureAI Gateway** is a privacy-conscious enterprise AI gateway that enables employees to query internal business records while strictly enforcing server-side authorization in Go, applying **Policy-Guided Context Release** (data minimization, aggregation, redaction), and sanitizing context via a Python AI engine before IBM Granite inference.
 
-## 1. Project Overview
+---
 
-SecureAI Gateway is a privacy-preserving enterprise AI application designed to help employees use AI safely without unnecessarily exposing sensitive information such as customer details, financial records, personal identifiers, and confidential company data.
+## 📑 Table of Contents
+1. [Executive Summary & Problem Statement](#1-executive-summary--problem-statement)
+2. [Actual Repository & File Structure](#2-actual-repository--file-structure)
+3. [System Architecture & The Go/Python Split](#3-system-architecture--the-gopython-split)
+4. [Custom Contribution: Policy-Guided Context Release](#4-custom-contribution-policy-guided-context-release)
+5. [Technology Stack](#5-technology-stack)
+6. [Quick Start Guide](#6-quick-start-guide)
+7. [Security Verification Suite (9 Test Scenarios)](#7-security-verification-suite)
+8. [Documentation Index](#8-documentation-index)
+9. [Truthfulness & Deployment Claims](#9-truthfulness--deployment-claims)
 
-We plan to build a ChatGPT-like web interface where employees can submit questions and receive AI-generated insights. A Security Gateway will operate between the employee interface and IBM Granite AI.
+---
 
-Before information reaches the AI model, the gateway verifies the user's permissions, retrieves only authorized records, detects sensitive information, and sanitizes the data. It also checks AI responses and maintains privacy-conscious audit logs.
+## 1. Executive Summary & Problem Statement
 
-The application is intended to run on IBM LinuxONE, subject to verification of the available environment and AI inference capabilities.
+### The Problem
+When enterprises adopt generative AI for business record analysis (e.g., *"Analyze recent transactions for Account 9577690"*), traditional setups create two severe security exposures:
+1. **Misplaced Access Control:** If access control is handled only by the AI prompt or frontend, a user can manipulate the prompt to inspect records they are not authorized to view.
+2. **Data Overexposure:** Applications often fetch full raw database rows—containing credit cards, SSNs, phone numbers, and private notes—and feed them into the model context window, leaking confidential data to inference providers.
 
-## 2. Problem Statement
+### The Solution: SecureAI Gateway
+SecureAI Gateway decouples database access from the LLM:
+- **Authoritative Security in Go:** The Go backend authenticates the employee, validates role-based permissions, and executes constrained SQL queries. The LLM has zero direct database access.
+- **Policy-Guided Context Release:** Go filters and minimizes data before network transmission, selecting `ALLOW_MINIMAL_FIELDS`, `AGGREGATE`, `REDACT`, or `DENY`.
+- **Python Guardrails Tier:** A dedicated Python AI engine scans for PII via Microsoft Presidio, formats minimal prompts, invokes IBM Granite (or a labeled mock adapter), and validates the output against response disclosure filters.
+- **Privacy-Conscious Audit Logging:** Decision metadata, timestamps, reason codes, and latencies are recorded without raw sensitive customer values or confidential prompts.
 
-Organizations increasingly want to use AI to analyze business information, but employees may accidentally expose sensitive data when submitting prompts or documents to AI systems.
+---
 
-For example, an employee might submit:
+## 2. Actual Repository & File Structure
 
-`Analyze Ravi's recent transactions. Account number: 9577690`
+Our repository follows a clean, decoupled service architecture:
 
-If sensitive information is passed directly to an AI model without appropriate controls, it may be unnecessarily exposed. Weak access controls can also allow employees to retrieve records they are not authorized to view.
-
-**Our problem statement:** Enterprise AI use can expose sensitive data when prompts or retrieved records are sent to models without strong identity, access, and privacy controls.
-
-## 3. Proposed Solution
-
-We propose SecureAI Gateway, an application-layer security system that sits between employees and IBM Granite AI.
-
-The gateway will:
-
-- Authenticate employees and identify their roles.
-- Verify permissions before retrieving customer or transaction records.
-- Retrieve only the data the employee is authorized to access.
-- Detect personally identifiable information (PII).
-- Redact or tokenize sensitive identifiers when appropriate.
-- Send only the minimum authorized and sanitized context to IBM Granite.
-- Check AI responses for prohibited disclosures.
-- Record security decisions without unnecessarily storing raw sensitive information.
-
-The objective is to preserve the usefulness of AI while reducing unnecessary exposure of confidential data.
-
-## 4. Project Architecture
-
-```text
-                 EMPLOYEE
-                     |
-                     v
-          +----------------------+
-          | React Web Interface  |
-          | Login + Chat Window  |
-          +----------------------+
-                     |
-                     v
-          +----------------------+
-          |   FastAPI Backend    |
-          | Request Validation   |
-          +----------------------+
-                     |
-                     v
-          +----------------------+
-          |  SECURITY GATEWAY    |
-          |----------------------|
-          | Authentication       |
-          | Role-Based Access    |
-          | PII Detection        |
-          | Redaction/Tokenizing |
-          | Policy Enforcement   |
-          | Response Validation |
-          | Audit Logging        |
-          +----------------------+
-              |             |
-              v             v
-    +----------------+  +----------------+
-    | PostgreSQL     |  | IBM Granite AI |
-    | Synthetic Data |  | Approved Input |
-    | Token Vault    |  | AI Inference   |
-    | Audit Events   |  +----------------+
-    +----------------+          |
-                                v
-                    +----------------------+
-                    | Response Security    |
-                    | Check and Filtering  |
-                    +----------------------+
-                                |
-                                v
-                    +----------------------+
-                    | Answer in Chat UI    |
-                    +----------------------+
 ```
-
-**Important:** The architecture above describes the proposed design. Actual deployment of IBM Granite and the application on LinuxONE must be verified before being claimed as completed.
-
-## 5. How the System Works
-
-Consider an employee asking:
-
-`Analyze Ravi's recent transactions for account 9577690.`
-
-### Step 1: Employee Interface
-
-The employee opens our web application and submits a question through the chat interface.
-
-**Technology:** React
-
-### Step 2: Backend Receives the Request
-
-The backend receives the request, validates its structure, and identifies the authenticated user.
-
-**Technology:** Python and FastAPI
-
-### Step 3: Identity and Authorization
-
-The Security Gateway checks the employee's identity, role, and permission to access the requested account.
-
-For example:
-- An authorized employee can request an approved transaction summary.
-- An employee without the required permission receives an access-denied response.
-
-The permission check happens on the server before data retrieval. The AI model does not decide whether the employee is authorized.
-
-**Methodology:** Role-Based Access Control (RBAC)
-
-### Step 4: Authorized Data Retrieval
-
-If permission is granted, the gateway retrieves only the relevant transaction records from the database.
-
-The account number may be required internally to locate the records, but it does not automatically need to be included in the AI prompt.
-
-**Technology:** PostgreSQL
-
-### Step 5: Sensitive Data Detection
-
-The gateway checks the retrieved information and prompt for sensitive identifiers.
-
-For example:
-
-Before sanitization:
-
-`Account: 9577690`
-
-After sanitization:
-
-`Account: [REDACTED]`
-
-If a consistent reference is needed, the gateway may instead replace the identifier with a generated token.
-
-**Technology:** Microsoft Presidio and suitable recognizers, supplemented by validation and testing.
-
-### Step 6: Tokenization and the Token Vault
-
-Tokenization replaces a real identifier with a generated reference.
-
-Example:
-
-| Original identifier | Token |
-|---|---|
-| Fictional account ID: 9577690 | ACC-TKN-01 |
-| Fictional account ID: 4581237 | ACC-TKN-02 |
-
-The mapping is stored in a restricted token vault. Only the authorized gateway service should be able to access the mapping.
-
-Employees and Granite must not have direct access to the token vault.
-
-Tokenization is not the same as anonymization because the original value can be recovered if the mapping is available.
-
-### Step 7: IBM Granite Generates Insights
-
-The gateway sends only the approved, sanitized information needed for analysis.
-
-Example context:
-
-`Analyze these recent transactions for customer ACC-TKN-01: shopping ₹2,000, UPI ₹500, salary credit ₹10,000.`
-
-Granite analyzes the supplied information and generates an answer without requiring the original account number.
-
-**Technology:** IBM Granite, subject to model and inference access being available.
-
-### Step 8: Response Validation
-
-Before returning the response, the gateway checks whether it contains information that should not be disclosed.
-
-The system should not assume that every AI-generated answer is automatically safe or correct.
-
-### Step 9: Audit Logging
-
-The system records relevant security events, including:
-
-- Timestamp
-- Pseudonymous user reference
-- Requested operation
-- Authorization outcome
-- Redaction or policy action
-- Reason for denial, when applicable
-
-Raw prompts, credentials, token mappings, and sensitive identifiers should not be logged unnecessarily.
-
-### Step 10: Display the Answer
-
-The employee sees the permitted AI-generated answer in our ChatGPT-like interface.
-
-The overall workflow is:
-
-**Employee → React → FastAPI → Security Gateway → Authorized Data Retrieval → Sanitization → Granite → Response Checks → Employee**
-
-## 6. Technology Stack
-
-| Technology | Purpose |
-|---|---|
-| React | Builds the employee-facing chat interface and login screens. |
-| Python | Implements gateway logic, data processing, and integration. |
-| FastAPI | Receives requests and connects the frontend to backend services. |
-| Microsoft Presidio | Detects supported sensitive-data patterns. |
-| PII Recognizers | Help identify identifiers such as emails and phone numbers. |
-| PostgreSQL | Stores synthetic business records, token mappings, policy metadata, and audit events. |
-| IBM Granite | Generates AI responses from approved context. |
-| IBM LinuxONE | Intended enterprise deployment and AI inference platform. |
-| Podman | Optional containerization for repeatable deployment. |
-| pytest | Supports automated testing of application and security behavior. |
-
-The precise Granite integration method will depend on the inference endpoint or model-serving option available to the team.
-
-## 7. Data and Privacy
-
-The prototype will use synthetic, fictional data only.
-
-Planned data includes:
-
-- Fictional customer profiles
-- Generated customer identifiers
-- Mock transaction records
-- Synthetic employee roles and permissions
-- Sample prompts containing fictional sensitive-data patterns
-- Prompt-injection and unauthorized-access test cases
-- Audit events generated during testing
-
-**Privacy rule:** Do not use real Aadhaar numbers, PAN details, bank-account data, passwords, medical records, production logs, or real customer datasets in the prototype unless explicitly authorized.
-
-Synthetic data allows the team to demonstrate the workflow without exposing real individuals or organizations.
-
-## 8. Security Methodology
-
-### 8.1 Authentication
-
-Verify the employee's identity before processing protected requests.
-
-### 8.2 Role-Based Access Control
-
-Restrict access according to the user's assigned role and permissions.
-
-### 8.3 Least Privilege
-
-Give every component only the permissions necessary for its function.
-
-For example:
-- The employee can submit requests through the interface.
-- Granite receives approved context for analysis.
-- The gateway controls authorization and data retrieval.
-- The token vault has restricted access.
-- Audit storage records security events without unnecessary secrets.
-
-### 8.4 Data Minimization
-
-Send only the information required to answer the employee's question.
-
-### 8.5 PII Redaction and Tokenization
-
-Remove or replace sensitive identifiers before the information is sent to Granite when required by the applicable policy.
-
-### 8.6 Prompt-Injection Testing
-
-Test whether malicious prompts can persuade the assistant to ignore instructions or reveal restricted information.
-
-Authorization must remain enforced independently of the model's instructions.
-
-### 8.7 Response Validation
-
-Check generated responses for prohibited disclosures before displaying them.
-
-### 8.8 Privacy-Conscious Audit Logging
-
-Record relevant decisions while avoiding unnecessary storage of raw sensitive content.
-
-## 9. Suggested GitHub Repository Structure
-
-```text
-secureai-gateway/
+.
+├── backend-go/                      # Track 1: Go Control Plane & Security Boundary
+│   ├── cmd/
+│   │   └── api/
+│   │       └── main.go              # Go HTTP server entrypoint
+│   ├── internal/                    # Core internal packages
+│   │   ├── ai_client/               # Service-to-service HTTP client for Python AI engine
+│   │   ├── api/                     # HTTP handlers (/api/v1/chat, /me, /health, /audit)
+│   │   ├── audit/                   # Privacy-conscious audit logger
+│   │   ├── auth/                    # Employee authentication & demo persona claims
+│   │   ├── authorization/           # Role-Based Access Control (RBAC) engine
+│   │   ├── config/                  # Environment variable configuration loader
+│   │   ├── middleware/              # Logging, CORS, and auth middleware
+│   │   ├── policy/                  # Policy-Guided Context Release decision engine
+│   │   └── retrieval/               # Parameterized database retrieval operations
+│   ├── tests/                       # Go unit & integration tests
+│   └── go.mod                       # Go module dependencies
 │
-├── README.md
-│
-├── frontend/
-│   ├── src/
-│   ├── public/
-│   └── package.json
-│
-├── backend/
+├── ai-engine/                       # Track 2: Python AI Engine & Guardrails
 │   ├── app/
-│   │   ├── main.py
-│   │   ├── api/
-│   │   ├── auth/
-│   │   ├── gateway/
-│   │   ├── pii/
-│   │   ├── token_vault/
-│   │   ├── retrieval/
-│   │   ├── llm/
-│   │   ├── audit/
-│   │   └── models/
-│   │
-│   ├── tests/
-│   └── requirements.txt
+│   │   ├── api/                     # Internal service routing (/internal/v1/analyze)
+│   │   ├── context_builder/         # Minimal prompt generation from approved context
+│   │   ├── inference/               # IBM Granite adapter & labeled Mock adapter
+│   │   ├── pii/                     # Presidio & regex PII sanitization pipeline
+│   │   ├── response_checks/         # Response disclosure guardrails
+│   │   ├── schemas/                 # Pydantic request/response data contracts
+│   │   └── main.py                  # FastAPI application entrypoint
+│   ├── tests/                       # Pytest automated test suite
+│   ├── requirements.txt             # Python runtime dependencies
+│   └── pyproject.toml               # Python package metadata & test settings
 │
-├── data/
-│   └── README.md
+├── frontend/                        # Track 3: React Interface
+│   ├── public/                      # Static web assets
+│   ├── src/
+│   │   ├── components/              # Chat UI, Persona Switcher, Audit Drawer
+│   │   ├── pages/                   # Main dashboard view
+│   │   ├── services/                # API client connecting to Go backend
+│   │   └── types/                   # TypeScript interfaces
+│   └── package.json                 # React, Vite, and Tailwind dependencies
 │
-├── docs/
-│   ├── architecture.md
-│   ├── security-tests.md
-│   └── demo-script.md
+├── data/                            # Track 4: Database & Synthetic Datasets
+│   ├── migrations/
+│   │   └── 001_initial_schema.sql   # DDL for roles, permissions, employees, customers, audit
+│   ├── seed.sql                     # Synthetic records (including demo account 9577690)
+│   ├── init_db.sh                   # One-command database migration & seed script
+│   └── README.md                    # Data compliance and schema notes
 │
-├── deployment/
-│   └── README.md
+├── deployment/                      # Packaging & Platform Deployment
+│   ├── Containerfile.backend        # Multi-stage container for Go backend (s390x compatible)
+│   ├── Containerfile.ai             # Container for Python AI engine (s390x compatible)
+│   ├── podman-compose.yml           # Compose stack for Podman / Docker
+│   └── README.md                    # IBM LinuxONE / s390x deployment instructions
 │
-├── .env.example
-├── .gitignore
-└── LICENSE
+├── docs/                            # In-Depth Project Documentation
+│   ├── architecture.md              # Deep-dive on trust zones and boundary rules
+│   ├── threat-model.md              # STRIDE analysis and prompt injection defense
+│   ├── security-tests.md            # Test matrix for the 9 security scenarios
+│   └── demo-script.md               # Second-by-second 3-minute hackathon demo script
+│
+├── scripts/
+│   └── run_security_tests.sh        # Automated CLI test runner for all 9 security cases
+│
+├── instructions.md                  # Comprehensive team guide & live task tracker
+├── .env.example                     # Environment configuration template
+├── .gitignore                       # Standardized ignore rules
+├── LICENSE                          # Apache 2.0 open-source license
+└── README.md                        # Project landing page (this document)
 ```
 
-This is a suggested structure. The team can adapt it as implementation progresses.
+---
 
-**Never commit passwords, API keys, access tokens, `.env` files, or real sensitive data to GitHub.**
+## 3. System Architecture & The Go/Python Split
 
-## 10. Team Responsibilities
+```mermaid
+flowchart TD
+    subgraph Browser["Employee Client (Browser)"]
+        UI["React Frontend (:5173)\n- Chat Interface\n- Demo Persona Switcher\n- Security Status Badges"]
+    end
 
-| Workstream | Responsibilities |
-|---|---|
-| Frontend Development | React interface, login screens, chat window, and displaying responses. |
-| Backend Development | FastAPI endpoints, request validation, and service integration. |
-| Security Development | Authorization rules, PII detection, redaction, tokenization, and response checks. |
-| Database Development | Synthetic data, PostgreSQL schema, token vault, and audit events. |
-| AI Integration | Granite connection, safe context construction, and AI response handling. |
-| Deployment and Testing | LinuxONE setup, containerization if feasible, security tests, and deployment evidence. |
-| Documentation and Presentation | Architecture documentation, test results, demo preparation, and project pitch. |
+    subgraph GoBoundary["Authoritative Security Boundary (Go :8080)"]
+        API["HTTP Gateway (/api/v1/chat)"]
+        AUTH["Auth & RBAC Validator"]
+        POLICY["Policy-Guided Context Release\n(ALLOW_MINIMAL_FIELDS | AGGREGATE | REDACT | DENY)"]
+        AUDIT["Privacy-Conscious Audit Logger"]
+    end
 
-Team members can take multiple responsibilities depending on team size.
+    subgraph DataTier["Data Tier (PostgreSQL :5432)"]
+        DB[("PostgreSQL\n- Employees & Roles\n- Customers & Transactions\n- Audit Events")]
+    end
 
-All members should coordinate through GitHub issues, branches, pull requests, and regular integration.
+    subgraph PythonTier["AI Processing Tier (Python :8000)"]
+        FAST["FastAPI Service (/internal/v1/analyze)"]
+        PII["Presidio PII Scrubber"]
+        PROMPT["Minimal Prompt Builder"]
+        GUARD["Response Disclosure Guardrail"]
+    end
 
-## 11. Security Testing Plan
+    subgraph ModelTier["Inference Tier"]
+        ADAPT{"Model Adapter"}
+        GRANITE["IBM Granite Model\n(Inference Endpoint)"]
+        MOCK["Labeled Mock Adapter\n(Deterministic Fallback)"]
+    end
 
-| Test | Expected Result |
-|---|---|
-| Authorized access | The user retrieves only permitted records. |
-| Unauthorized access | The gateway denies access before retrieving restricted data. |
-| PII detection | Supported sensitive patterns are detected and sanitized according to policy. |
-| Model input validation | Original sensitive identifiers are absent from the model-bound payload when required by policy. |
-| Prompt injection | Instructions to bypass policy do not override server-side authorization. |
-| Token vault protection | Employees and Granite cannot directly access token mappings. |
-| Audit logging | Allowed and denied actions produce appropriate audit events. |
-| Response validation | Prohibited disclosures are detected and handled according to policy. |
-| Answer usefulness | Permitted business questions remain answerable after sanitization. |
+    UI -->|1. Submit Query + Identity| API
+    API -->|2. Verify Role & Permissions| AUTH
+    AUTH -->|3. Evaluate Policy| POLICY
+    POLICY -->|4. Parameterized Query| DB
+    POLICY -->|5. Approved Context Only| FAST
+    FAST -->|6. Scrub Residual PII| PII
+    PII -->|7. Build Safe Prompt| PROMPT
+    PROMPT -->|8. Inference Call| ADAPT
+    ADAPT -.->|Live Endpoint| GRANITE
+    ADAPT -.->|Local Dev| MOCK
+    ADAPT -->|9. Generated Answer| GUARD
+    GUARD -->|10. Answer + Safety Status| API
+    API -->|11. Non-Sensitive Audit Event| AUDIT
+    AUDIT -->|12. Store Audit Record| DB
+    API -->|13. Safe Permitted Answer| UI
+```
 
-The team must record actual test results after implementation. Detection errors, limitations, and unsuccessful cases should be documented honestly.
+### Why the Go + Python Split?
+- **Go as the Control Plane:** Go provides high performance, type-safe security boundaries, minimal memory footprint, and low latency for network routing, SQL execution, and authorization.
+- **Python as the AI Worker:** Python provides direct access to modern AI guardrail tooling, such as Microsoft Presidio for NLP-driven PII identification and LLM SDKs.
+- **The Golden Rule:** The Go backend is the sole authority for data retrieval. Python has **no database credentials** and cannot expand the scope of data approved by Go.
 
-## 12. IBM Z Datathon Relevance
+---
 
-Our project aligns with **Theme 2: AI Secured – Innovation Without Exposure**.
+## 4. Custom Contribution: Policy-Guided Context Release
 
-### Community and Business Value
+Before any record is forwarded across the network boundary to Python, Go executes the **Policy-Guided Context Release** engine:
 
-The solution addresses the risk of sensitive information being unnecessarily exposed when organizations use AI for business analysis.
+| Action | Trigger Criteria | Transformation Applied |
+| :--- | :--- | :--- |
+| **`ALLOW_MINIMAL_FIELDS`** | Direct line-item transaction analysis authorized. | Strips internal notes and PII; passes only `date`, `amount`, and `category`. |
+| **`AGGREGATE`** | Query asks for summary, totals, or trends. | Computes summary metrics server-side in Go; passes zero row-level transaction records to AI. |
+| **`REDACT`** | Cross-account comparative analysis. | Replaces account numbers and names with surrogate tokens (`ACCT-XXXX`). |
+| **`DENY`** | Employee lacks permission or policy cannot be satisfied. | Immediately denies access (HTTP 403); retrieves 0 database rows; dispatches 0 AI requests. |
 
-Potential users include:
-- Enterprise employees
-- Security and privacy teams
-- IT administrators
-- Banks and insurance organizations
-- Healthcare providers
-- Public-sector organizations
+---
 
-### Technical Design
+## 5. Technology Stack
 
-The proposed architecture combines:
-- Identity-aware access control
-- Privacy-preserving data processing
-- AI-assisted analysis
-- Restricted token mappings
-- Response validation
-- Security audit events
+| Layer | Component | Language / Framework | Purpose |
+| :--- | :--- | :--- | :--- |
+| **Frontend** | `frontend/` | React, TypeScript, Tailwind CSS | Employee chat UI, demo persona selector, security tags |
+| **Backend** | `backend-go/` | Go 1.22+, `net/http` | Authentication, RBAC, Policy Engine, SQL retrieval, audit logger |
+| **AI Engine** | `ai-engine/` | Python 3.10+, FastAPI | PII scanning, minimal prompt construction, response guardrail |
+| **PII Detection** | `ai-engine/app/pii` | Microsoft Presidio / Regex | Anonymization of emails, phone numbers, and sensitive identifiers |
+| **Inference** | `ai-engine/app/inference` | IBM Granite / Labeled Mock | Generates answers strictly from approved context |
+| **Database** | `data/` | PostgreSQL 16+ | Synthetic business data, role mappings, and audit trail |
+| **Deployment** | `deployment/` | Podman / Docker, Alpine, UBI | Containerized packaging targeting IBM LinuxONE (`s390x`) |
 
-### IBM LinuxONE Usage
+---
 
-IBM LinuxONE is the intended deployment platform for demonstrating the enterprise AI workflow.
+## 6. Quick Start Guide
 
-The team should demonstrate the actual LinuxONE environment, application deployment, and Granite inference where available. Containerization, security, and scalability should be presented as implemented capabilities only when verified.
+### Step 1: Clone & Configure
+```bash
+git clone https://github.com/DadiBhagyavathi/Datathon_Z_IBM.git
+cd Datathon_Z_IBM
+cp .env.example .env
+```
 
-### Originality and Evaluation
+### Step 2: Start PostgreSQL Database
+```bash
+# Start PostgreSQL container:
+docker run --name secureai-postgres \
+  -e POSTGRES_DB=secureai \
+  -e POSTGRES_USER=secureai_user \
+  -e POSTGRES_PASSWORD=secureai_pass \
+  -p 5432:5432 -d postgres:16-alpine
 
-Our contribution is the integration of authorization, data minimization, PII processing, AI response checks, and privacy-conscious auditing into a testable workflow.
+# Initialize schema and synthetic seed data:
+./data/init_db.sh
+```
 
-We will evaluate the prototype using repeatable tests rather than claiming that it is completely secure.
+### Step 3: Start Python AI Engine
+```bash
+cd ai-engine
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
+```
 
-The project should demonstrate:
-1. A permitted request receiving a useful answer.
-2. An unauthorized request being denied.
-3. Sensitive information being sanitized before AI inference.
-4. A prompt-injection attempt being handled safely.
-5. Audit events being recorded without unnecessary sensitive content.
+### Step 4: Start Go Security Backend
+In a new terminal:
+```bash
+cd backend-go
+go mod tidy
+export DB_HOST=localhost DB_PORT=5432 DB_USER=secureai_user DB_PASSWORD=secureai_pass DB_NAME=secureai
+export AI_ENGINE_URL=http://127.0.0.1:8000 PORT=8080
+go run cmd/api/main.go
+```
 
-## 13. Suggested 24-Hour Implementation Plan
+### Step 5: Start React Frontend
+In a third terminal:
+```bash
+cd frontend
+npm install
+npm run dev
+```
+Open **`http://localhost:5173`** in your browser.
 
-| Time | Task |
-|---|---|
-| Hours 0–3 | Finalize roles, synthetic data schema, policies, and test cases. |
-| Hours 3–7 | Implement FastAPI request handling and server-side authorization. |
-| Hours 7–11 | Add synthetic data retrieval, PII detection, redaction/tokenization, and protected mapping storage. |
-| Hours 11–15 | Integrate Granite if access is available; otherwise use a clearly labelled development mock. |
-| Hours 15–19 | Implement response checks, audit events, and security tests. |
-| Hours 19–22 | Build the React interface and prepare a working demonstration. |
-| Hours 22–24 | Verify the end-to-end workflow, collect evidence, and document limitations. |
+---
 
-The team should prioritize a complete and tested workflow over implementing too many unfinished features.
+## 7. Security Verification Suite
 
-## 14. Three-Minute Demonstration Plan
+Our test suite verifies the 9 critical security test scenarios outlined in the project specification:
 
-**0:00–0:25 — Introduction**
+```bash
+# Run backend Go tests:
+cd backend-go && go test -v ./...
 
-Show the login page and explain the employee-facing AI interface.
+# Run AI engine Pytest suite:
+cd ai-engine && pytest -v
 
-**0:25–0:55 — Authorized Request**
+# Run automated end-to-end security scenario script:
+./scripts/run_security_tests.sh
+```
 
-Submit a permitted business question using fictional transaction records and show the AI-generated answer.
+| Test ID | Test Scenario | Expected Observable Result |
+| :---: | :--- | :--- |
+| **ST-01** | **Authorized Request** | Senior Analyst queries Account `9577690` $\rightarrow$ Returns 200 OK with accurate analysis based only on permitted records. |
+| **ST-02** | **Unauthorized Record Access** | Intern queries Account `9577690` $\rightarrow$ Returns 403 Forbidden. **Zero records fetched from DB.** |
+| **ST-03** | **PII Sanitization** | Synthetic customer PII in context is detected and masked by Presidio before model prompt. |
+| **ST-04** | **Model Payload Inspection** | Verifies that prohibited identifiers and internal notes are absent from the model-bound payload. |
+| **ST-05** | **Prompt Injection Resistance** | Adversarial prompts cannot bypass Go's server-side SQL queries or expand retrieval scope. |
+| **ST-06** | **Response Disclosure Guardrail** | Inadvertent disclosures in model output are detected and redacted before reaching the client. |
+| **ST-07** | **Privacy Audit Verification** | Both allowed and denied operations log decision metadata without storing raw customer secrets. |
+| **ST-08** | **AI Engine Down (Fail-Closed)** | If the Python AI service fails or times out, Go fails closed and never bypasses authorization. |
+| **ST-09** | **Policy Engine Failure (Fail-Closed)** | If policy evaluation fails, access is denied immediately. |
 
-**0:55–1:25 — Unauthorized Request**
+---
 
-Attempt to access a restricted record and demonstrate the gateway denying access.
+## 8. Documentation Index
 
-**1:25–1:55 — Sensitive Data Protection**
+- 📘 **[Team Collaboration & Instructions Guide (instructions.md)](file:///home/rubberducky/projects/hackathon/Datathon_Z_IBM/instructions.md)** — Comprehensive team handbook, workstream roles, JSON API contracts, live task tracker, and demo pitch.
+- 🏛️ **[Architecture Deep-Dive (docs/architecture.md)](file:///home/rubberducky/projects/hackathon/Datathon_Z_IBM/docs/architecture.md)** — Boundary definitions, trust zones, and policy decision matrices.
+- 🛡️ **[Threat Model & Security Controls (docs/threat-model.md)](file:///home/rubberducky/projects/hackathon/Datathon_Z_IBM/docs/threat-model.md)** — STRIDE threat analysis and concrete mitigations.
+- 🧪 **[Security Test Plan (docs/security-tests.md)](file:///home/rubberducky/projects/hackathon/Datathon_Z_IBM/docs/security-tests.md)** — Verification procedures and expected outcomes.
+- 🎬 **[3-Minute Hackathon Demo Script (docs/demo-script.md)](file:///home/rubberducky/projects/hackathon/Datathon_Z_IBM/docs/demo-script.md)** — Screen actions and spoken narration for the live judge presentation.
+- 🗄️ **[Synthetic Data Guide (data/README.md)](file:///home/rubberducky/projects/hackathon/Datathon_Z_IBM/data/README.md)** — Schema definitions, compliance rules, and demo accounts.
+- 🐳 **[Deployment Guide (deployment/README.md)](file:///home/rubberducky/projects/hackathon/Datathon_Z_IBM/deployment/README.md)** — Container build instructions and IBM LinuxONE (`s390x`) compatibility.
 
-Submit a prompt containing fictional sensitive identifiers and show the sanitized model input.
+---
 
-**1:55–2:25 — Security Test**
+## 9. Truthfulness & Deployment Claims
 
-Demonstrate a prompt-injection or secret-extraction test and explain the result.
-
-**2:25–2:50 — Audit Events**
-
-Show the security log with the action, outcome, timestamp, and reason code, without exposing unnecessary sensitive content.
-
-**2:50–3:00 — IBM LinuxONE and Results**
-
-Show the actual deployment environment and model integration, summarize measured test results, and state any limitations.
-
-## 15. Limitations
-
-- PII detection may miss sensitive values or incorrectly flag ordinary text.
-- Tokenization is reversible if the mapping vault is accessible.
-- A language model may generate incorrect or unsafe information.
-- Response filtering cannot guarantee that every possible disclosure will be prevented.
-- Running on IBM LinuxONE does not automatically make an application production-secure.
-- Live Granite integration and LinuxONE deployment must be verified before they are reported as completed.
-
-SecureAI Gateway is a proof of concept. It should not be described as certified or production-ready without appropriate security testing and validation.
-
-## 16. Project Pitch
-
-**SecureAI Gateway enables safer enterprise AI by enforcing identity-aware access, protecting sensitive information before inference, and auditing security decisions while allowing IBM Granite to answer useful questions from authorized context.**
-
-Built as a proposed proof of concept for the **IBM Z Datathon 2026 — Theme 2: AI Secured – Innovation Without Exposure**.
+In strict accordance with the hackathon truthfulness rules:
+- **IBM Granite Inference:** If an active IBM Granite API endpoint is not configured, our system runs via an explicitly labeled deterministic `MockInferenceAdapter` (`"ai_adapter": "mock-inference-v1"`). We do not claim live Granite inference without verifiable endpoint logs.
+- **IBM LinuxONE (`s390x`):** Our containerfiles and code are built to be architecture-neutral and compatible with Linux on IBM Z. We test locally on Linux containers and document platform status honestly without claiming remote LinuxONE deployment until verified on actual hardware.
+- **Prompt Injection:** We do not claim to "solve" prompt injection inside foundation models; rather, our architecture makes prompt injection ineffective at unauthorized data exfiltration by enforcing strict, server-side data boundaries upstream.

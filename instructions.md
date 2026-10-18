@@ -283,14 +283,14 @@ Open **`http://localhost:5173`** in your browser.
 - [x] Automated database reset script [`data/init_db.sh`](file:///home/rubberducky/projects/hackathon/Datathon_Z_IBM/data/init_db.sh)
 
 ### Milestone 4: Go API & Security Backend
-- [ ] Go module setup (`backend-go/go.mod`)
-- [ ] Routing & HTTP handlers (`/api/v1/health`, `/api/v1/me`, `/api/v1/chat`, `/api/v1/audit`)
-- [ ] RBAC authorization validator middleware
-- [ ] **Policy-Guided Context Release engine** (`ALLOW_MINIMAL_FIELDS`, `AGGREGATE`, `REDACT`, `DENY`)
-- [ ] Parameterized database retrieval (guaranteeing zero unauthorized record fetches)
-- [ ] Python AI client with context timeout and fail-closed error handling
-- [ ] Privacy-conscious audit logger (sanitized event metadata saved to DB)
-- [ ] Unit tests for policy and RBAC (`go test ./...`)
+- [x] Go module setup ([`backend-go/go.mod`](file:///home/rubberducky/projects/hackathon/Datathon_Z_IBM/backend-go/go.mod))
+- [x] Routing & HTTP handlers (`/api/v1/health`, `/api/v1/me`, `/api/v1/chat`, `/api/v1/audit`) in [`backend-go/internal/api/`](file:///home/rubberducky/projects/hackathon/Datathon_Z_IBM/backend-go/internal/api/)
+- [x] RBAC authorization validator in [`backend-go/internal/authorization/rbac.go`](file:///home/rubberducky/projects/hackathon/Datathon_Z_IBM/backend-go/internal/authorization/rbac.go)
+- [x] **Policy-Guided Context Release engine** (`ALLOW_MINIMAL_FIELDS`, `AGGREGATE`, `REDACT`, `DENY`) in [`backend-go/internal/policy/engine.go`](file:///home/rubberducky/projects/hackathon/Datathon_Z_IBM/backend-go/internal/policy/engine.go)
+- [x] Parameterized database retrieval (guaranteeing zero unauthorized record fetches) in [`backend-go/internal/retrieval/store.go`](file:///home/rubberducky/projects/hackathon/Datathon_Z_IBM/backend-go/internal/retrieval/store.go)
+- [x] Python AI client with context timeout and fail-closed error handling in [`backend-go/internal/ai_client/client.go`](file:///home/rubberducky/projects/hackathon/Datathon_Z_IBM/backend-go/internal/ai_client/client.go)
+- [x] Privacy-conscious audit logger (sanitized event metadata saved to memory & DB) in [`backend-go/internal/audit/logger.go`](file:///home/rubberducky/projects/hackathon/Datathon_Z_IBM/backend-go/internal/audit/logger.go)
+- [x] Unit tests for policy and RBAC (`go test -v ./...` passing 100%) in [`backend-go/tests/security_test.go`](file:///home/rubberducky/projects/hackathon/Datathon_Z_IBM/backend-go/tests/security_test.go)
 
 ### Milestone 5: Python AI Engine
 - [ ] FastAPI service setup (`ai-engine/app/main.py`)
@@ -301,12 +301,12 @@ Open **`http://localhost:5173`** in your browser.
 - [ ] Pytest suite (`pytest tests/`)
 
 ### Milestone 6: React Frontend Interface
-- [ ] React + TypeScript + Tailwind project scaffolding (`frontend/`)
-- [ ] Demo persona switcher (`Senior Analyst`, `Regional Branch`, `Intern`)
-- [ ] Interactive chat dialogue component
-- [ ] Security transparency indicator (shows applied policy tag, PII scrub count, check status)
-- [ ] Graceful 403 access-denied UI alert
-- [ ] Audit log inspection modal/drawer
+- [x] React + TypeScript + Tailwind project scaffolding ([`frontend/`](file:///home/rubberducky/projects/hackathon/Datathon_Z_IBM/frontend/))
+- [x] Demo persona switcher (`Senior Analyst`, `Regional Branch`, `Intern`) in [`frontend/src/components/PersonaSwitcher.tsx`](file:///home/rubberducky/projects/hackathon/Datathon_Z_IBM/frontend/src/components/PersonaSwitcher.tsx)
+- [x] Interactive chat dialogue component in [`frontend/src/components/ChatWindow.tsx`](file:///home/rubberducky/projects/hackathon/Datathon_Z_IBM/frontend/src/components/ChatWindow.tsx)
+- [x] Security transparency indicator (shows applied policy tag, PII scrub count, check status) in [`frontend/src/components/SecurityPanel.tsx`](file:///home/rubberducky/projects/hackathon/Datathon_Z_IBM/frontend/src/components/SecurityPanel.tsx)
+- [x] Graceful 403 access-denied UI alert in [`frontend/src/components/MessageBubble.tsx`](file:///home/rubberducky/projects/hackathon/Datathon_Z_IBM/frontend/src/components/MessageBubble.tsx)
+- [x] Audit log inspection modal/drawer in [`frontend/src/components/AuditDrawer.tsx`](file:///home/rubberducky/projects/hackathon/Datathon_Z_IBM/frontend/src/components/AuditDrawer.tsx)
 
 ### Milestone 7: Automated Security Tests
 - [ ] Test 1: Authorized request succeeds with minimal context

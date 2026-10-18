@@ -204,23 +204,41 @@ Before any record is forwarded across the network boundary to Python, Go execute
 ## 6. Quick Start Guide
 
 ### 🚀 Option A: 1-Command Startup (Recommended)
-You can start all three services (Python AI Engine, Go Backend, and React Frontend) with a single command:
+
+#### On Linux / macOS / WSL2:
 ```bash
 # Make executable and launch:
 ./scripts/start_all.sh
-```
-This automatically frees ports, launches the processes in the background with health probes, and writes logs to `.logs/`.
 
+# To stop:
+./scripts/stop_all.sh
+```
+
+#### On Windows (Command Prompt / Batch):
+```cmd
+REM Run batch script from root directory:
+.\scripts\start_all.bat
+
+REM To stop:
+.\scripts\stop_all.bat
+```
+
+#### On Windows (PowerShell):
+```powershell
+# Run PowerShell script:
+.\scripts\start_all.ps1
+
+# To stop:
+.\scripts\stop_all.ps1
+```
+
+This automatically checks ports, launches the services in the background, and outputs health status:
 - **Frontend UI:** [http://localhost:5173](http://localhost:5173)
 - **Go Security Gateway:** [http://localhost:8080](http://localhost:8080)
 - **AI Engine:** [http://localhost:8000](http://localhost:8000)
 
-To stop all services cleanly:
-```bash
-./scripts/stop_all.sh
-```
-
 ---
+
 
 ### 🛠️ Option B: Manual Step-by-Step Launch
 
@@ -274,12 +292,13 @@ Every security guarantee is verified by automated test suites at unit, integrati
 
 ### 🧪 Test Commands Quick Reference
 
-| Test Scope | Command | Purpose |
-| :--- | :--- | :--- |
-| **End-to-End Security Suite** | `./scripts/run_security_tests.sh` | Tests all 11 connectivity, RBAC, PII, prompt-injection, and fail-closed scenarios. |
-| **Go Backend Unit Tests** | `cd backend-go && go test -v ./...` | Validates RBAC matrix, Policy Context Release, in-memory store, and audit logger. |
-| **Python AI Engine Tests** | `cd ai-engine && PYTHONPATH=. pytest -v` | Validates Presidio PII scrubbing, context builders, and response disclosure guardrails. |
-| **Frontend Production Build**| `cd frontend && npm run build` | Runs TypeScript compiler (`tsc`) and Vite production bundle packaging. |
+| Test Scope | Linux / macOS / WSL2 | Windows (CMD / PowerShell) | Purpose |
+| :--- | :--- | :--- | :--- |
+| **End-to-End Security Suite** | `./scripts/run_security_tests.sh` | `.\scripts\run_security_tests.bat`<br/>*or* `.\scripts\run_security_tests.ps1` | Tests all 11 connectivity, RBAC, PII, prompt-injection, and fail-closed scenarios. |
+| **Go Backend Unit Tests** | `cd backend-go && go test -v ./...` | `cd backend-go; go test -v ./...` | Validates RBAC matrix, Policy Context Release, in-memory store, and audit logger. |
+| **Python AI Engine Tests** | `cd ai-engine && PYTHONPATH=. pytest -v` | `cd ai-engine; set PYTHONPATH=.; pytest -v` | Validates Presidio PII scrubbing, context builders, and response disclosure guardrails. |
+| **Frontend Production Build** | `cd frontend && npm run build` | `cd frontend; npm run build` | Runs TypeScript compiler (`tsc`) and Vite production bundle packaging. |
+
 
 ---
 

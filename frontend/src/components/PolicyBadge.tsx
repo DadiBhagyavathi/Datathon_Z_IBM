@@ -1,89 +1,46 @@
-import { ShieldOff, ShieldCheck, BarChart2, EyeOff, Clock, Cpu, Database, Zap, AlertTriangle } from 'lucide-react';
+import { ShieldOff, ShieldCheck, BarChart2, EyeOff, Clock, Cpu, Database, AlertTriangle } from 'lucide-react';
 import type { PolicyAction } from '../types';
 
-// ─── Policy Badge ────────────────────────────────────────────────
-interface PolicyBadgeProps {
-  action: PolicyAction;
-  size?: 'sm' | 'md';
-}
-
-const POLICY_CFG: Record<PolicyAction, {
-  label: string; icon: React.ElementType; cls: string; description: string;
-}> = {
-  ALLOW_MINIMAL_FIELDS: {
-    label: 'ALLOW_MINIMAL_FIELDS', icon: ShieldCheck, cls: 'badge-allow',
-    description: 'Approved fields only — notes and identifiers stripped',
-  },
-  AGGREGATE: {
-    label: 'AGGREGATE', icon: BarChart2, cls: 'badge-aggregate',
-    description: 'Summary statistics — no row-level records transmitted',
-  },
-  REDACT: {
-    label: 'REDACT', icon: EyeOff, cls: 'badge-redact',
-    description: 'Identifiers replaced with surrogate tokens (ACCT-XXXX)',
-  },
-  DENY: {
-    label: 'DENY', icon: ShieldOff, cls: 'badge-deny',
-    description: 'Request blocked — zero records fetched, no AI call made',
-  },
+/* ─── Policy Badge ────────────────────────────────────────────── */
+const PCFG: Record<PolicyAction, { label: string; icon: React.ElementType; cls: string; desc: string }> = {
+  ALLOW_MINIMAL_FIELDS: { label:'ALLOW', icon:ShieldCheck, cls:'badge-allow',     desc:'Approved fields only' },
+  AGGREGATE:            { label:'AGGREGATE', icon:BarChart2, cls:'badge-aggregate', desc:'Summary stats only' },
+  REDACT:               { label:'REDACT', icon:EyeOff,    cls:'badge-redact',     desc:'Identifiers tokenized' },
+  DENY:                 { label:'DENY', icon:ShieldOff,   cls:'badge-deny',       desc:'Request blocked' },
 };
 
-export function PolicyBadge({ action, size = 'sm' }: PolicyBadgeProps) {
-  const cfg = POLICY_CFG[action];
-  const Icon = cfg.icon;
+export function PolicyBadge({ action, size='sm' }: { action: PolicyAction; size?:'sm'|'md' }) {
+  const c = PCFG[action]; const Icon = c.icon;
   return (
-    <span
-      className={`inline-flex items-center gap-1.5 rounded-lg font-mono font-semibold ${cfg.cls} ${
-        size === 'sm' ? 'px-2 py-0.5 text-[10px]' : 'px-2.5 py-1 text-[11px]'
-      }`}
-      title={cfg.description}
-    >
-      <Icon size={size === 'sm' ? 10 : 12} />
-      {cfg.label}
+    <span className={`badge ${c.cls} ${size==='md' ? 'text-[11px] px-2.5 py-1' : ''}`} title={c.desc}>
+      <Icon size={size==='md'?12:10} />{c.label}
     </span>
   );
 }
 
-// ─── Security Meta Strip ─────────────────────────────────────────
-interface SecurityMetaStripProps {
-  piiDetected: number;
-  piiRedacted: number;
-  fieldsStripped: number;
-  latencyMs: number;
-  auditEventId: string;
-  modelAdapter: string;
-  dbRowsFetched?: number;
-  promptTokens?: number;
-}
-
-export function SecurityMetaStrip({
-  piiDetected, piiRedacted, fieldsStripped, latencyMs,
-  auditEventId, modelAdapter, dbRowsFetched, promptTokens,
-}: SecurityMetaStripProps) {
+/* ─── Meta Strip ──────────────────────────────────────────────── */
+export function SecurityMetaStrip({ piiDetected, piiRedacted, fieldsStripped, latencyMs, auditEventId, modelAdapter, dbRowsFetched, promptTokens }: {
+  piiDetected:number; piiRedacted:number; fieldsStripped:number;
+  latencyMs:number; auditEventId:string; modelAdapter:string;
+  dbRowsFetched?:number; promptTokens?:number;
+}) {
   return (
-    <div className="flex flex-wrap items-center gap-1.5 mt-2">
-      {piiDetected > 0 && <MetaChip icon={<EyeOff size={9} />} label={`PII ${piiRedacted}/${piiDetected}`} color="#ff832b" />}
-      {fieldsStripped > 0 && <MetaChip icon={<Database size={9} />} label={`${fieldsStripped} stripped`} color="#be95ff" />}
-      {dbRowsFetched !== undefined && <MetaChip icon={<Database size={9} />} label={`${dbRowsFetched} rows`} color="#82cfff" />}
-      {promptTokens !== undefined && <MetaChip icon={<Cpu size={9} />} label={`${promptTokens} tokens`} color="#9898b0" />}
-      <MetaChip icon={<Clock size={9} />} label={`${latencyMs}ms`} color="#9898b0" />
-      <MetaChip icon={<Zap size={9} />} label={modelAdapter} color="#5a5a72" />
-      <MetaChip icon={<span className="text-[8px] font-mono">#</span>} label={auditEventId} color="#3a3a52" mono />
+    <div className="flex flex-wrap gap-1.5 mt-2">
+      {piiDetected > 0 && <M icon={<EyeOff size={9}/>} text={`PII ${piiRedacted}/${piiDetected}`} color="#ea580c" />}
+      {fieldsStripped > 0 && <M icon={<Database size={9}/>} text={`${fieldsStripped} stripped`} color="#7c3aed" />}
+      {dbRowsFetched !== undefined && <M icon={<Database size={9}/>} text={`${dbRowsFetched} rows`} color="#0f62fe" />}
+      {promptTokens !== undefined && <M icon={<Cpu size={9}/>} text={`${promptTokens} tok`} color="#6b7280" />}
+      <M icon={<Clock size={9}/>} text={`${latencyMs}ms`} color="#6b7280" />
+      <M icon={<span className="text-[8px]">#</span>} text={auditEventId} color="#d1d5db" mono />
     </div>
   );
 }
 
-function MetaChip({ icon, label, color, mono }: { icon: React.ReactNode; label: string; color: string; mono?: boolean }) {
+function M({ icon, text, color, mono }: { icon:React.ReactNode; text:string; color:string; mono?:boolean }) {
   return (
-    <span
-      className={`inline-flex items-center gap-1 px-1.5 py-[3px] rounded-md text-[9px] ${mono ? 'font-mono' : ''}`}
-      style={{
-        color,
-        background: `${color}10`,
-        border: `1px solid ${color}20`,
-      }}
-    >
-      {icon}{label}
+    <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] ${mono?'font-mono':''}`}
+      style={{ background:`${color}12`, color, border:`1px solid ${color}25` }}>
+      {icon}{text}
     </span>
   );
 }

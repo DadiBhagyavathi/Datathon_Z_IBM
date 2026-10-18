@@ -9,235 +9,169 @@ import AuditDrawer from '../components/AuditDrawer';
 import PersonaSwitcher from '../components/PersonaSwitcher';
 import SuggestedQueries from '../components/SuggestedQueries';
 
-interface DashboardPageProps {
-  employee: Employee;
-  onLogout: () => void;
-}
-
 const EMPTY_STATS: SessionStats = {
-  totalRequests: 0,
-  blockedRequests: 0,
-  allowedRequests: 0,
-  aggregateRequests: 0,
-  redactedRequests: 0,
-  piiValuesDetected: 0,
-  piiValuesRedacted: 0,
-  injectionAttemptsBlocked: 0,
+  totalRequests:0, blockedRequests:0, allowedRequests:0,
+  aggregateRequests:0, redactedRequests:0,
+  piiValuesDetected:0, piiValuesRedacted:0, injectionAttemptsBlocked:0,
 };
 
-export default function DashboardPage({ employee: initEmp, onLogout }: DashboardPageProps) {
-  const [employee, setEmployee]           = useState<Employee>(initEmp);
-  const [messages, setMessages]           = useState<Message[]>([]);
-  const [input, setInput]                 = useState('');
-  const [isLoading, setIsLoading]         = useState(false);
-  const [auditOpen, setAuditOpen]         = useState(false);
-  const [personaOpen, setPersonaOpen]     = useState(false);
-  const [lastSecurity, setLastSecurity]   = useState<SecurityMeta | null>(null);
-  const [lastPolicy, setLastPolicy]       = useState<PolicyAction | null>(null);
-  const [stats, setStats]                 = useState<SessionStats>(EMPTY_STATS);
-  const [auditEvents, setAuditEvents]     = useState<AuditEvent[]>(getAuditEvents());
+export default function DashboardPage({ employee: initEmp, onLogout }: { employee:Employee; onLogout:()=>void }) {
+  const [employee, setEmployee]         = useState<Employee>(initEmp);
+  const [messages, setMessages]         = useState<Message[]>([]);
+  const [input, setInput]               = useState('');
+  const [isLoading, setIsLoading]       = useState(false);
+  const [auditOpen, setAuditOpen]       = useState(false);
+  const [personaOpen, setPersonaOpen]   = useState(false);
+  const [lastSecurity, setLastSecurity] = useState<SecurityMeta|null>(null);
+  const [lastPolicy, setLastPolicy]     = useState<PolicyAction|null>(null);
+  const [stats, setStats]               = useState<SessionStats>(EMPTY_STATS);
+  const [auditEvents, setAuditEvents]   = useState<AuditEvent[]>(getAuditEvents());
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const msgId    = useRef(0);
 
-  // Auto-resize textarea
   useEffect(() => {
     if (!inputRef.current) return;
     inputRef.current.style.height = 'auto';
-    inputRef.current.style.height = `${Math.min(inputRef.current.scrollHeight, 160)}px`;
+    inputRef.current.style.height = `${Math.min(inputRef.current.scrollHeight, 150)}px`;
   }, [input]);
 
-  // Refresh audit events
   useEffect(() => {
-    const id = setInterval(() => setAuditEvents(getAuditEvents()), 1000);
-    return () => clearInterval(id);
+    const id = setInterval(()=>setAuditEvents(getAuditEvents()), 1000);
+    return ()=>clearInterval(id);
   }, []);
 
   const handleSend = useCallback(async (override?: string) => {
     const text = (override ?? input).trim();
     if (!text || isLoading) return;
+    setInput(''); setIsLoading(true);
 
-    setInput('');
-    setIsLoading(true);
-
-    const userMsg: Message = {
-      id: `msg_${++msgId.current}`,
-      role: 'user',
-      content: text,
-      timestamp: new Date(),
-    };
-    setMessages(prev => [...prev, userMsg]);
+    setMessages(prev => [...prev, { id:`msg_${++msgId.current}`, role:'user', content:text, timestamp:new Date() }]);
 
     try {
-      const history = messages.map(m => ({ role: m.role, content: m.content }));
+      const history = messages.map(m=>({ role:m.role, content:m.content }));
       const res = await sendChatMessage(employee, text, history);
-
-      const assistantMsg: Message = {
-        id: `msg_${++msgId.current}`,
-        role: 'assistant',
+      setMessages(prev => [...prev, {
+        id:`msg_${++msgId.current}`, role:'assistant',
         content: res.error ?? res.answer ?? 'Unexpected error.',
-        timestamp: new Date(),
-        securityMeta: res.security,
-        isError: !!res.error,
-      };
-      setMessages(prev => [...prev, assistantMsg]);
-      setLastSecurity(res.security);
-      setLastPolicy(res.security.policyAction);
-
+        timestamp:new Date(), securityMeta:res.security, isError:!!res.error,
+      }]);
+      setLastSecurity(res.security); setLastPolicy(res.security.policyAction);
       setStats(prev => ({
-        totalRequests:           prev.totalRequests + 1,
-        blockedRequests:         prev.blockedRequests + (res.security.isBlocked ? 1 : 0),
-        allowedRequests:         prev.allowedRequests + (!res.security.isBlocked && res.security.policyAction === 'ALLOW_MINIMAL_FIELDS' ? 1 : 0),
-        aggregateRequests:       prev.aggregateRequests + (res.security.policyAction === 'AGGREGATE' ? 1 : 0),
-        redactedRequests:        prev.redactedRequests + (res.security.policyAction === 'REDACT' ? 1 : 0),
-        piiValuesDetected:       prev.piiValuesDetected + res.security.piiDetected,
-        piiValuesRedacted:       prev.piiValuesRedacted + res.security.piiRedacted,
-        injectionAttemptsBlocked: prev.injectionAttemptsBlocked + (res.security.injectionAttemptDetected ? 1 : 0),
+        totalRequests: prev.totalRequests+1,
+        blockedRequests: prev.blockedRequests+(res.security.isBlocked?1:0),
+        allowedRequests: prev.allowedRequests+(!res.security.isBlocked&&res.security.policyAction==='ALLOW_MINIMAL_FIELDS'?1:0),
+        aggregateRequests: prev.aggregateRequests+(res.security.policyAction==='AGGREGATE'?1:0),
+        redactedRequests: prev.redactedRequests+(res.security.policyAction==='REDACT'?1:0),
+        piiValuesDetected: prev.piiValuesDetected+res.security.piiDetected,
+        piiValuesRedacted: prev.piiValuesRedacted+res.security.piiRedacted,
+        injectionAttemptsBlocked: prev.injectionAttemptsBlocked+(res.security.injectionAttemptDetected?1:0),
       }));
-
       setAuditEvents(getAuditEvents());
     } catch {
-      setMessages(prev => [...prev, {
-        id: `msg_${++msgId.current}`,
-        role: 'assistant',
-        content: '**Gateway Error** — Unable to process request. Please try again.',
-        timestamp: new Date(),
-        isError: true,
-      }]);
+      setMessages(prev => [...prev, { id:`msg_${++msgId.current}`, role:'assistant', content:'**Gateway Error** — Unable to process request.', timestamp:new Date(), isError:true }]);
     } finally {
       setIsLoading(false);
-      setTimeout(() => inputRef.current?.focus(), 50);
+      setTimeout(()=>inputRef.current?.focus(), 50);
     }
   }, [input, isLoading, messages, employee]);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); }
+    if (e.key==='Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); }
   }, [handleSend]);
 
-  const handleSwitchPersona = useCallback((emp: Employee) => {
-    setEmployee(emp);
-    setMessages([]);
-    setLastSecurity(null);
-    setLastPolicy(null);
-    setStats(EMPTY_STATS);
+  const switchPersona = useCallback((emp:Employee) => {
+    setEmployee(emp); setMessages([]); setLastSecurity(null); setLastPolicy(null); setStats(EMPTY_STATS);
   }, []);
 
   return (
-    <div className="flex flex-col h-screen overflow-hidden" style={{ background: 'var(--bg)' }}>
-      {/* Fine grid */}
-      <div className="absolute inset-0 security-grid-fine opacity-30 pointer-events-none" />
-
+    <div className="flex flex-col h-screen overflow-hidden" style={{ background:'#f9fafb' }}>
       <Header
-        employee={employee}
-        onSwitchPersona={() => setPersonaOpen(true)}
-        onOpenAudit={() => setAuditOpen(true)}
-        onLogout={onLogout}
-        requestCount={stats.totalRequests}
-        lastPolicy={lastPolicy}
-        isProcessing={isLoading}
+        employee={employee} onSwitchPersona={()=>setPersonaOpen(true)}
+        onOpenAudit={()=>setAuditOpen(true)} onLogout={onLogout}
+        requestCount={stats.totalRequests} lastPolicy={lastPolicy} isProcessing={isLoading}
       />
 
-      <div className="flex flex-1 overflow-hidden relative z-10">
+      <div className="chat-layout">
         {/* Chat column */}
-        <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
+        <div className="chat-main">
           <ChatWindow messages={messages} isLoading={isLoading} employee={employee} />
 
-          {/* Divider */}
-          <div className="flex-shrink-0" style={{ borderTop: '1px solid rgba(255,255,255,0.04)' }}>
-            <SuggestedQueries employee={employee} onSelect={q => handleSend(q)} disabled={isLoading} />
-          </div>
+          <SuggestedQueries employee={employee} onSelect={q=>handleSend(q)} disabled={isLoading} />
 
-          {/* Input area */}
-          <div className="flex-shrink-0 px-4 pb-4 pt-1">
-            <div className="flex flex-col gap-2 rounded-2xl p-3 glass"
-              style={{ boxShadow: isLoading ? '0 0 0 1px rgba(15,98,254,0.2), 0 0 20px rgba(15,98,254,0.06)' : 'none', transition: 'box-shadow 0.3s ease' }}>
-
-              {/* Processing label */}
-              {isLoading && (
-                <div className="flex items-center gap-2 px-1 animate-fade">
-                  <Shield size={11} style={{ color: '#4589ff', animation: 'shieldPulse 0.8s ease-in-out infinite alternate' }} />
-                  <span className="text-[10px] font-mono" style={{ color: 'var(--text-muted)' }}>
-                    PII scan → Policy check → Granite inference...
-                  </span>
-                  <div className="flex-1 h-px" style={{ background: 'linear-gradient(90deg, rgba(15,98,254,0.4), transparent)' }} />
-                </div>
-              )}
-
-              <div className="flex gap-3 items-end">
+          {/* Input */}
+          <div className="chat-input-wrap">
+            <div className="flex gap-2.5 items-end">
+              <div className="flex-1">
+                {isLoading && (
+                  <div className="flex items-center gap-2 mb-1.5 px-1 animate-fade">
+                    <Shield size={11} style={{ color:'#0f62fe' }} />
+                    <span className="text-[10px]" style={{ color:'#9ca3af' }}>
+                      PII scan · Policy check · Granite inference…
+                    </span>
+                  </div>
+                )}
                 <textarea
                   ref={inputRef}
                   value={input}
-                  onChange={e => setInput(e.target.value)}
+                  onChange={e=>setInput(e.target.value)}
                   onKeyDown={handleKeyDown}
-                  placeholder="Ask a business question... (Enter to send · Shift+Enter for new line)"
-                  className="chat-input flex-1"
+                  placeholder="Ask a business question… (Enter to send, Shift+Enter for new line)"
+                  className="chat-input"
                   rows={1}
                   disabled={isLoading}
-                  style={{ minHeight: '44px', maxHeight: '160px' }}
+                  style={{ minHeight:44, maxHeight:150 }}
                 />
-
-                <div className="flex items-end gap-2 flex-shrink-0 pb-0.5">
-                  {messages.length > 0 && (
-                    <button
-                      onClick={() => { setMessages([]); setLastSecurity(null); }}
-                      className="p-2.5 rounded-xl transition-all duration-200"
-                      style={{ color: 'var(--text-muted)' }}
-                      title="Clear"
-                      onMouseEnter={e => { (e.currentTarget).style.color = 'var(--text-secondary)'; (e.currentTarget).style.background = 'rgba(255,255,255,0.06)'; }}
-                      onMouseLeave={e => { (e.currentTarget).style.color = 'var(--text-muted)'; (e.currentTarget).style.background = 'transparent'; }}
-                    >
-                      <Trash2 size={15} />
-                    </button>
-                  )}
-
-                  <button
-                    onClick={() => handleSend()}
-                    disabled={!input.trim() || isLoading}
-                    className={`p-2.5 rounded-xl transition-all duration-250 ${input.trim() && !isLoading ? 'send-btn-active' : ''}`}
-                    style={!input.trim() || isLoading
-                      ? { background: 'rgba(255,255,255,0.04)', color: 'var(--text-muted)', cursor: 'not-allowed' }
-                      : { color: 'white' }}
-                  >
-                    {isLoading
-                      ? <div className="w-4 h-4 border-2 rounded-full animate-spin" style={{ borderColor: 'rgba(255,255,255,0.2)', borderTopColor: 'rgba(255,255,255,0.8)' }} />
-                      : <Send size={15} />
-                    }
-                  </button>
-                </div>
               </div>
 
-              {/* Footer */}
-              <div className="flex items-center justify-between px-1">
-                <p className="text-[9px] font-mono" style={{ color: '#2a2a3a' }}>
-                  All queries routed through SecureAI Gateway · Granite on IBM LinuxONE
-                </p>
-                <div className="flex items-center gap-1.5">
-                  <div className="w-1.5 h-1.5 rounded-full"
-                    style={{
-                      background: isLoading ? '#4589ff' : '#42be65',
-                      boxShadow: `0 0 6px ${isLoading ? '#4589ff' : '#42be65'}`,
-                      animation: isLoading ? 'glowPulseBlue 0.8s ease-in-out infinite' : 'none',
-                      transition: 'background 0.3s',
-                    }} />
-                  <span className="text-[9px] font-mono" style={{ color: '#3a3a52' }}>
-                    {isLoading ? 'Processing' : 'Gateway Ready'}
-                  </span>
-                </div>
+              <div className="flex items-end gap-1.5 flex-shrink-0 pb-0.5">
+                {messages.length > 0 && (
+                  <button onClick={()=>{setMessages([]);setLastSecurity(null);}}
+                    className="p-2.5 rounded-xl transition-all" style={{ color:'#9ca3af' }}
+                    title="Clear"
+                    onMouseEnter={e=>{(e.currentTarget).style.background='#f3f4f6';(e.currentTarget).style.color='#374151';}}
+                    onMouseLeave={e=>{(e.currentTarget).style.background='transparent';(e.currentTarget).style.color='#9ca3af';}}>
+                    <Trash2 size={15} />
+                  </button>
+                )}
+                <button onClick={()=>handleSend()} disabled={!input.trim()||isLoading}
+                  className="p-2.5 rounded-xl transition-all flex items-center justify-center"
+                  style={{
+                    background: input.trim()&&!isLoading?'#0f62fe':'#f3f4f6',
+                    color: input.trim()&&!isLoading?'white':'#d1d5db',
+                    cursor: !input.trim()||isLoading?'not-allowed':'pointer',
+                    boxShadow: input.trim()&&!isLoading?'0 2px 8px rgba(15,98,254,0.3)':'none',
+                    transition: 'all 0.15s ease',
+                  }}>
+                  {isLoading
+                    ? <div className="w-4 h-4 border-2 rounded-full" style={{ borderColor:'rgba(255,255,255,0.3)',borderTopColor:'white',animation:'spin 0.7s linear infinite' }}/>
+                    : <Send size={15} />
+                  }
+                </button>
+              </div>
+            </div>
+
+            {/* Footer hint */}
+            <div className="flex items-center justify-between mt-2 px-0.5">
+              <p className="text-[10px]" style={{ color:'#d1d5db' }}>
+                All queries route through SecureAI Gateway · IBM LinuxONE
+              </p>
+              <div className="flex items-center gap-1.5">
+                <div className="w-1.5 h-1.5 rounded-full"
+                  style={{ background:isLoading?'#0f62fe':'#059669', transition:'background 0.3s',
+                    boxShadow:`0 0 4px ${isLoading?'rgba(15,98,254,0.6)':'rgba(5,150,105,0.6)'}` }} />
+                <span className="text-[10px]" style={{ color:'#9ca3af' }}>
+                  {isLoading?'Processing':'Gateway Ready'}
+                </span>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Security panel */}
-        <SecurityPanel
-          employee={employee}
-          lastSecurity={lastSecurity}
-          stats={stats}
-          isProcessing={isLoading}
-        />
+        <SecurityPanel employee={employee} lastSecurity={lastSecurity} stats={stats} isProcessing={isLoading} />
       </div>
 
-      <AuditDrawer isOpen={auditOpen} onClose={() => setAuditOpen(false)} events={auditEvents} />
-      <PersonaSwitcher isOpen={personaOpen} currentEmployee={employee} onSelect={handleSwitchPersona} onClose={() => setPersonaOpen(false)} />
+      <AuditDrawer isOpen={auditOpen} onClose={()=>setAuditOpen(false)} events={auditEvents} />
+      <PersonaSwitcher isOpen={personaOpen} currentEmployee={employee} onSelect={switchPersona} onClose={()=>setPersonaOpen(false)} />
     </div>
   );
 }

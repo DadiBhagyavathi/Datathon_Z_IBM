@@ -1,9 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
-import { ShieldOff, EyeOff, Activity, Database, Cpu } from 'lucide-react';
+import { ShieldOff, EyeOff, Activity, Database, Cpu, CheckCircle } from 'lucide-react';
 import type { Employee, SecurityMeta, SessionStats } from '../types';
 import { PolicyBadge } from './PolicyBadge';
 
-/* ─── Animated Number ──────────────────────────────────────────── */
 function Num({ value }: { value: number }) {
   const [disp, setDisp] = useState(value);
   const prev = useRef(value);
@@ -22,177 +21,175 @@ function Num({ value }: { value: number }) {
   return <>{disp}</>;
 }
 
-/* ─── Stat Card ────────────────────────────────────────────────── */
-function StatCard({ label, value, accent, icon: Icon }: { label:string; value:number; accent?:string; icon:React.ElementType }) {
-  const color = accent && value > 0 ? accent : '#374151';
+function StatCard({ 
+  label, 
+  value, 
+  accent, 
+  icon: Icon 
+}: { 
+  label: string; 
+  value: number; 
+  accent?: string; 
+  icon: React.ElementType 
+}) {
+  const color = accent && value > 0 ? accent : '#00f0ff';
   return (
-    <div className="stat-card">
+    <div className="secure-stat-card">
       <div className="flex items-center justify-between mb-2">
-        <Icon size={12} style={{ color: accent||'#9ca3af' }} />
+        <Icon size={13} style={{ color: accent || '#38bdf8' }} />
       </div>
-      <div className="font-bold font-mono leading-none mb-1.5 animate-count" style={{ fontSize:22, color }}>
+      <div className="font-bold font-mono leading-none mb-1 text-2xl" style={{ color }}>
         <Num value={value} />
       </div>
-      <div className="text-[10px] font-medium uppercase tracking-wide" style={{ color:'#9ca3af' }}>{label}</div>
+      <div className="text-[10px] font-bold uppercase tracking-wider text-slate-300">{label}</div>
     </div>
   );
 }
 
-/* ─── Access Bar ───────────────────────────────────────────────── */
-function AccessBar({ level }: { level:'full'|'aggregate'|'none' }) {
-  const w = level==='full'?'100%':level==='aggregate'?'50%':'4%';
-  const color = level==='full'?'#059669':level==='aggregate'?'#d97706':'#dc2626';
+function AccessBar({ level }: { level: 'full' | 'aggregate' | 'none' }) {
+  const w = level === 'full' ? '100%' : level === 'aggregate' ? '50%' : '5%';
+  const color = level === 'full' ? '#10b981' : level === 'aggregate' ? '#f59e0b' : '#ef4444';
   return (
-    <div className="space-y-1.5">
-      <div className="flex justify-between">
-        <span className="text-[10px]" style={{ color:'#9ca3af' }}>Data Access</span>
-        <span className="text-[10px] font-medium" style={{ color }}>
-          {level==='full'?'Full':level==='aggregate'?'Aggregate':'None'}
+    <div className="space-y-1.5 pt-2 border-t border-slate-700/60">
+      <div className="flex justify-between items-center text-xs">
+        <span className="text-slate-300 font-mono">Data Scope:</span>
+        <span className="font-bold font-mono" style={{ color }}>
+          {level === 'full' ? 'FULL ROW-LEVEL' : level === 'aggregate' ? 'AGGREGATE STATS' : 'BLOCKED (ZERO)'}
         </span>
       </div>
-      <div className="progress-track">
-        <div className="progress-fill" style={{ width:w, background:color }} />
+      <div className="w-full bg-slate-900 rounded-full h-2 overflow-hidden border border-slate-700">
+        <div 
+          className="h-full rounded-full transition-all duration-500" 
+          style={{ width: w, background: color, boxShadow: `0 0 8px ${color}` }} 
+        />
       </div>
     </div>
   );
 }
 
-/* ─── Info Row ─────────────────────────────────────────────────── */
-function Row({ label, value }: { label:string; value:string }) {
-  return (
-    <div className="flex items-center justify-between gap-2">
-      <span className="text-[10px]" style={{ color:'#9ca3af' }}>{label}</span>
-      <span className="text-[10px] font-mono truncate max-w-[140px]" style={{ color:'#6b7280' }}>{value}</span>
-    </div>
-  );
-}
-
-/* ─── Main ─────────────────────────────────────────────────────── */
-export default function SecurityPanel({ employee, lastSecurity, stats, isProcessing }: {
-  employee:Employee; lastSecurity:SecurityMeta|null; stats:SessionStats; isProcessing:boolean;
+export default function SecurityPanel({ 
+  employee, 
+  lastSecurity, 
+  stats, 
+  isProcessing 
+}: {
+  employee: Employee; 
+  lastSecurity: SecurityMeta | null; 
+  stats: SessionStats; 
+  isProcessing: boolean;
 }) {
   return (
-    <aside className="security-sidebar overflow-y-auto">
-      {/* Header */}
-      <div className="sidebar-section flex items-center justify-between">
+    <aside className="secure-sidebar">
+      {/* Sidebar Header */}
+      <div className="secure-sidebar-section flex items-center justify-between bg-slate-900/60">
         <div className="flex items-center gap-2">
-          <div className="w-2 h-2 rounded-full live-pulse"
-            style={{ background: isProcessing?'#0f62fe':'#059669', transition:'background 0.3s' }} />
-          <span className="text-xs font-semibold" style={{ color:'#111827' }}>Security Context</span>
+          <div className="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-pulse shadow-sm shadow-cyan-400" />
+          <span className="text-xs font-bold text-white uppercase tracking-wider">Security Context</span>
         </div>
-        <span className="text-[9px] font-mono font-semibold px-1.5 py-0.5 rounded-full"
-          style={{ background: isProcessing?'#eff6ff':'#ecfdf5', color: isProcessing?'#0f62fe':'#059669',
-            border:`1px solid ${isProcessing?'#bfdbfe':'#6ee7b7'}` }}>
-          {isProcessing?'PROCESSING':'LIVE'}
+        <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-md border ${
+          isProcessing ? 'bg-cyan-950 text-cyan-300 border-cyan-500' : 'bg-emerald-950 text-emerald-300 border-emerald-500'
+        }`}>
+          {isProcessing ? 'SCANNING' : 'ENFORCING'}
         </span>
       </div>
 
-      {/* Identity */}
-      <div className="sidebar-section space-y-3">
-        <p className="sidebar-label">Active Identity</p>
+      {/* Authenticated Identity */}
+      <div className="secure-sidebar-section space-y-3">
+        <p className="secure-sidebar-label">Active Session Identity</p>
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl flex items-center justify-center font-bold text-xs flex-shrink-0"
-            style={{ background:'#eff6ff', color:'#0f62fe', border:'1px solid #bfdbfe' }}>
+          <div className="w-10 h-10 rounded-xl flex items-center justify-center font-bold text-xs bg-slate-800 text-cyan-300 border border-cyan-500/30 shadow-inner">
             {employee.avatarInitials}
           </div>
           <div>
-            <p className="text-sm font-semibold" style={{ color:'#111827' }}>{employee.displayName}</p>
-            <p className="text-[11px]" style={{ color:'#6b7280' }}>{employee.roleName}</p>
+            <p className="text-sm font-bold text-white">{employee.displayName}</p>
+            <p className="text-xs text-slate-300 font-medium">{employee.roleName}</p>
           </div>
         </div>
-        <div className="flex flex-wrap gap-1">
-          {employee.permissions.length > 0
-            ? employee.permissions.map(p => (
-              <span key={p} className="px-2 py-0.5 rounded-full text-[9px] font-mono font-medium"
-                style={{ background:'#ecfdf5', color:'#059669', border:'1px solid #6ee7b7' }}>{p}</span>
+
+        {/* Permissions */}
+        <div className="flex flex-wrap gap-1.5 pt-1">
+          {employee.permissions.length > 0 ? (
+            employee.permissions.map(p => (
+              <span key={p} className="px-2 py-0.5 rounded-md text-[10px] font-mono font-bold bg-emerald-950/80 text-emerald-300 border border-emerald-600/40">
+                {p}
+              </span>
             ))
-            : <span className="px-2 py-0.5 rounded-full text-[9px] font-mono font-medium"
-              style={{ background:'#fef2f2', color:'#dc2626', border:'1px solid #fca5a5' }}>NO_PERMISSIONS</span>
-          }
+          ) : (
+            <span className="px-2 py-0.5 rounded-md text-[10px] font-mono font-bold bg-rose-950/80 text-rose-300 border border-rose-600/40">
+              NO_PERMISSIONS
+            </span>
+          )}
         </div>
+
         <AccessBar level={employee.accessLevel} />
       </div>
 
-      {/* Last Request */}
+      {/* Last Request Metrics */}
       {lastSecurity && (
-        <div className="sidebar-section space-y-3 animate-fade">
-          <p className="sidebar-label">Last Request</p>
-          <PolicyBadge action={lastSecurity.policyAction} size="md" />
-          <div className="grid grid-cols-2 gap-x-4 gap-y-2.5">
-            {[
-              ['PII Detected', lastSecurity.piiDetected, lastSecurity.piiDetected>0],
-              ['PII Redacted', lastSecurity.piiRedacted, false],
-              ['Fields Stripped', lastSecurity.fieldsStripped, false],
-              ['Latency', `${lastSecurity.latencyMs}ms`, false],
-              ...(lastSecurity.dbRowsFetched!==undefined ? [['DB Rows', lastSecurity.dbRowsFetched, false]] : []),
-            ].map(([label, val, alert], i) => (
-              <div key={i}>
-                <p className="text-[9px] uppercase tracking-wide" style={{ color:'#9ca3af' }}>{label as string}</p>
-                <p className="text-[13px] font-mono font-semibold mt-0.5" style={{ color:(alert as boolean)?'#dc2626':'#374151' }}>{val as string|number}</p>
-              </div>
-            ))}
-          </div>
-
-          {lastSecurity.piiTypes.length > 0 && (
-            <div>
-              <p className="text-[9px] uppercase tracking-wide mb-1.5" style={{ color:'#9ca3af' }}>PII Types</p>
-              <div className="flex flex-wrap gap-1">
-                {lastSecurity.piiTypes.map(t => (
-                  <span key={t} className="badge badge-redact text-[9px]">{t}</span>
-                ))}
-              </div>
+        <div className="secure-sidebar-section space-y-3">
+          <p className="secure-sidebar-label">Last Policy Decision</p>
+          <PolicyBadge action={lastSecurity.policyAction} />
+          
+          <div className="grid grid-cols-2 gap-2.5 pt-1">
+            <div className="p-2 rounded-lg bg-slate-900 border border-slate-800">
+              <span className="text-[9px] font-mono text-slate-400 uppercase">PII Masked</span>
+              <p className={`text-sm font-mono font-bold ${lastSecurity.piiDetected > 0 ? 'text-amber-400' : 'text-slate-200'}`}>
+                {lastSecurity.piiRedacted} / {lastSecurity.piiDetected}
+              </p>
             </div>
-          )}
+            <div className="p-2 rounded-lg bg-slate-900 border border-slate-800">
+              <span className="text-[9px] font-mono text-slate-400 uppercase">Latency</span>
+              <p className="text-sm font-mono font-bold text-cyan-400">
+                {lastSecurity.latencyMs}ms
+              </p>
+            </div>
+          </div>
 
           {lastSecurity.injectionAttemptDetected && (
-            <div className="flex items-center gap-2 px-2.5 py-2 rounded-lg"
-              style={{ background:'#fef2f2', border:'1px solid #fca5a5' }}>
-              <ShieldOff size={11} style={{ color:'#dc2626' }} />
-              <span className="text-[9px] font-mono font-semibold" style={{ color:'#dc2626' }}>INJECTION_BLOCKED</span>
+            <div className="flex items-center gap-2 px-2.5 py-2 rounded-lg bg-rose-950/80 border border-rose-500/50">
+              <ShieldOff size={13} className="text-rose-400 flex-shrink-0" />
+              <span className="text-[11px] font-mono font-bold text-rose-200">INJECTION_BLOCKED</span>
             </div>
           )}
-
-          <div className="flex items-center gap-1.5 pt-2" style={{ borderTop:'1px solid #f3f4f6' }}>
-            <span className="text-[9px]" style={{ color:'#d1d5db' }}>Audit:</span>
-            <span className="text-[9px] font-mono truncate" style={{ color:'#d1d5db' }}>{lastSecurity.auditEventId}</span>
-          </div>
         </div>
       )}
 
-      {/* Stats */}
-      <div className="sidebar-section space-y-2">
-        <p className="sidebar-label">Session Statistics</p>
+      {/* Session Cumulative Stats */}
+      <div className="secure-sidebar-section space-y-2">
+        <p className="secure-sidebar-label">Session Telemetry</p>
         <div className="grid grid-cols-2 gap-2">
-          <StatCard label="Total"     value={stats.totalRequests}           icon={Activity}  />
-          <StatCard label="Blocked"   value={stats.blockedRequests}          icon={ShieldOff} accent="#dc2626" />
-          <StatCard label="PII Found" value={stats.piiValuesDetected}        icon={EyeOff}    accent="#ea580c" />
-          <StatCard label="Injections" value={stats.injectionAttemptsBlocked} icon={ShieldOff} accent="#dc2626" />
+          <StatCard label="Total Requests" value={stats.totalRequests} icon={Activity} />
+          <StatCard label="Blocked Requests" value={stats.blockedRequests} icon={ShieldOff} accent="#ef4444" />
+          <StatCard label="PII Detected" value={stats.piiValuesDetected} icon={EyeOff} accent="#f97316" />
+          <StatCard label="Injections Thwarted" value={stats.injectionAttemptsBlocked} icon={ShieldOff} accent="#ef4444" />
         </div>
       </div>
 
-      {/* Model */}
-      <div className="sidebar-section space-y-2">
-        <p className="sidebar-label">Model Adapter</p>
-        <div className="p-3 rounded-xl space-y-2" style={{ background:'#f9fafb', border:'1px solid #f3f4f6' }}>
-          <div className="flex items-center gap-2">
-            <Cpu size={13} style={{ color:'#0f62fe' }} />
-            <span className="text-xs font-semibold" style={{ color:'#374151' }}>mock-inference-v1</span>
-            <span className="ml-auto badge badge-aggregate text-[8px]">DEV</span>
+      {/* Hardware & System Info */}
+      <div className="secure-sidebar-section space-y-2">
+        <p className="secure-sidebar-label">Target Infrastructure</p>
+        <div className="p-3 rounded-xl bg-slate-900/90 border border-slate-800 space-y-2">
+          <div className="flex items-center gap-2 text-cyan-300 font-bold text-xs">
+            <Cpu size={14} />
+            <span>IBM Granite 13B on LinuxONE</span>
           </div>
-          <div className="space-y-1.5">
-            <Row label="Target"   value="granite-13b-chat-v2" />
-            <Row label="Platform" value="IBM LinuxONE s390x" />
-            <Row label="PII"      value="MS Presidio" />
-            <Row label="DB"       value="PostgreSQL 16" />
+          <div className="text-[11px] font-mono text-slate-300 space-y-1">
+            <div className="flex justify-between">
+              <span className="text-slate-400">Arch:</span>
+              <span className="text-white">s390x High Security</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-slate-400">PII Engine:</span>
+              <span className="text-white">Microsoft Presidio</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-slate-400">Data Vault:</span>
+              <span className="text-white">PostgreSQL (Separated)</span>
+            </div>
           </div>
         </div>
       </div>
 
-      <div className="px-4 py-3">
-        <p className="text-[10px] leading-relaxed" style={{ color:'#d1d5db' }}>
-          Advisory prototype · Synthetic data · IBM Z Datathon 2026
-        </p>
-      </div>
     </aside>
   );
 }

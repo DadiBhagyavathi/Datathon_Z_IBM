@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { Shield, CheckCircle, AlertTriangle, Lock, Activity, ArrowRight } from 'lucide-react';
+import { Shield, CheckCircle, AlertTriangle, ArrowRight, Lock, Key, Cpu, Database } from 'lucide-react';
 import type { Employee } from '../types';
 import { EMPLOYEES } from '../data/employees';
 
@@ -7,10 +7,28 @@ interface LoginPageProps {
   onLogin: (employee: Employee) => void;
 }
 
-const ACCESS = {
-  full:      { label: 'Full Access',      color: '#059669', bg: '#ecfdf5', border: '#6ee7b7', dot: '#059669' },
-  aggregate: { label: 'Aggregate Only',   color: '#d97706', bg: '#fffbeb', border: '#fde68a', dot: '#d97706' },
-  none:      { label: 'No Access',        color: '#dc2626', bg: '#fef2f2', border: '#fca5a5', dot: '#dc2626' },
+const ACCESS_CONFIG = {
+  full: {
+    label: 'Full Access',
+    color: '#34d399',
+    bg: 'rgba(16, 185, 129, 0.15)',
+    border: 'rgba(16, 185, 129, 0.4)',
+    dot: '#10b981'
+  },
+  aggregate: {
+    label: 'Aggregate Only',
+    color: '#fbbf24',
+    bg: 'rgba(245, 158, 11, 0.15)',
+    border: 'rgba(245, 158, 11, 0.4)',
+    dot: '#f59e0b'
+  },
+  none: {
+    label: 'No Access',
+    color: '#f87171',
+    bg: 'rgba(239, 68, 68, 0.15)',
+    border: 'rgba(239, 68, 68, 0.4)',
+    dot: '#ef4444'
+  },
 } as const;
 
 export default function LoginPage({ onLogin }: LoginPageProps) {
@@ -27,193 +45,208 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
   }, [selected, entering, selectedEmp, onLogin]);
 
   return (
-    <div className="login-page">
-      {/* ── Nav ── */}
-      <nav className="login-nav">
-        <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center" style={{ background: '#0f62fe' }}>
-            <Shield size={16} color="white" />
+    <div className="secure-theme-page">
+      {/* ── Top Navigation Bar ── */}
+      <nav className="secure-nav">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-xl flex items-center justify-center bg-gradient-to-br from-cyan-400 to-blue-600 shadow-lg shadow-cyan-500/20">
+            <Shield size={18} className="text-slate-950 stroke-[2.5]" />
           </div>
-          <span className="font-semibold text-[15px]" style={{ color: '#111827' }}>SecureAI Gateway</span>
+          <div className="flex flex-col">
+            <span className="font-bold text-white text-[15px] tracking-tight flex items-center gap-1.5">
+              SecureAI <span className="text-cyan-400">Gateway</span>
+            </span>
+            <span className="text-[10px] text-slate-400 font-mono tracking-wider">IBM LinuxONE · s390x</span>
+          </div>
         </div>
-        <div className="hidden sm:flex items-center gap-5">
-          {['Docs', 'Architecture', 'Security'].map(item => (
-            <a key={item} href="#" className="text-sm font-medium" style={{ color: '#6b7280' }}
-              onMouseEnter={e => (e.target as HTMLElement).style.color = '#111827'}
-              onMouseLeave={e => (e.target as HTMLElement).style.color = '#6b7280'}>
-              {item}
-            </a>
-          ))}
-          <span className="text-xs font-mono px-2.5 py-1 rounded-full" style={{ background: '#eff6ff', color: '#0f62fe', border: '1px solid #bfdbfe' }}>
-            IBM Z Datathon 2026
-          </span>
+
+        <div className="flex items-center gap-4">
+          <div className="hidden sm:flex items-center gap-2 px-3 py-1 rounded-full bg-slate-900/90 border border-cyan-500/30">
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+            <span className="text-xs font-mono text-cyan-300 font-semibold tracking-wide">
+              IBM Z Datathon 2026
+            </span>
+          </div>
         </div>
       </nav>
 
-      {/* ── Hero ── */}
-      <div className="login-hero">
-        {/* Floating abstract visual */}
-        <div className="relative mb-10 animate-float">
-          <div className="relative mx-auto" style={{ width: 120, height: 120 }}>
-            {/* Outer ring */}
-            <svg className="absolute inset-0" width="120" height="120" viewBox="0 0 120 120" fill="none">
-              <circle cx="60" cy="60" r="58" stroke="#e5e7eb" strokeWidth="1" strokeDasharray="6 4" />
-              <circle cx="60" cy="60" r="44" stroke="#dbeafe" strokeWidth="1" />
-              <circle cx="60" cy="2" r="4" fill="#0f62fe" />
-              <circle cx="60" cy="118" r="3" fill="#bfdbfe" />
-              <circle cx="2" cy="60" r="3" fill="#bfdbfe" />
-              <circle cx="118" cy="60" r="3" fill="#0f62fe" opacity="0.4" />
-            </svg>
-            {/* Shield center */}
-            <div className="absolute inset-6 rounded-2xl flex items-center justify-center"
-              style={{ background: 'linear-gradient(135deg, #0f62fe 0%, #0043ce 100%)', boxShadow: '0 12px 32px rgba(15,98,254,0.35)' }}>
-              <Shield size={36} color="white" strokeWidth={1.5} />
-            </div>
-            {/* Status dot */}
-            <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full border-2 border-white flex items-center justify-center"
-              style={{ background: '#059669' }}>
-              <CheckCircle size={11} color="white" strokeWidth={2.5} />
+      {/* ── Hero Section with Secure Lock Visual ── */}
+      <div className="flex-1 flex flex-col items-center justify-center px-4 py-8 max-w-6xl mx-auto w-full">
+        
+        {/* Floating Lock Visual (Second Image from UI PICS) */}
+        <div className="relative mb-6 flex justify-center items-center">
+          <div className="relative rounded-2xl overflow-hidden p-1 border-2 border-cyan-400/50 shadow-2xl shadow-cyan-500/30 neon-border-pulse bg-slate-900/80">
+            <img 
+              src="/secure-lock.jpg" 
+              alt="Secure Lock IBM Z" 
+              className="w-48 h-32 sm:w-64 sm:h-40 object-cover rounded-xl neon-glow-lock"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-transparent to-transparent opacity-60"></div>
+            
+            {/* Overlay Status Badge */}
+            <div className="absolute bottom-2 left-3 right-3 flex items-center justify-between text-[11px] font-mono text-cyan-200 bg-slate-950/80 backdrop-blur-md px-2.5 py-1 rounded-lg border border-cyan-400/30">
+              <span className="flex items-center gap-1.5">
+                <Lock size={12} className="text-cyan-400" />
+                Hardware-Enforced Cryptography
+              </span>
+              <span className="text-emerald-400 font-bold">ACTIVE</span>
             </div>
           </div>
         </div>
 
-        {/* Headline */}
-        <div className="text-center mb-3 max-w-2xl px-4">
-          <h1 className="font-bold leading-tight mb-3" style={{ fontSize: 'clamp(28px, 4vw, 44px)', color: '#111827', letterSpacing: '-0.02em' }}>
-            Privacy-Preserving Enterprise AI<br />
-            <span style={{ color: '#0f62fe' }}>on IBM LinuxONE</span>
+        {/* Title and Subtitle with 100% High-Contrast Legibility */}
+        <div className="text-center max-w-2xl mb-8">
+          <h1 className="text-3xl sm:text-5xl font-extrabold text-white tracking-tight leading-tight mb-3">
+            Privacy-Preserving Enterprise AI <br />
+            <span className="bg-gradient-to-r from-cyan-400 via-sky-300 to-blue-500 bg-clip-text text-transparent">
+              on IBM LinuxONE
+            </span>
           </h1>
-          <p style={{ color: '#6b7280', fontSize: 15, lineHeight: 1.7, maxWidth: 480, margin: '0 auto' }}>
-            SecureAI Gateway enforces identity, RBAC, PII redaction, and audit controls
+          <p className="text-slate-300 text-sm sm:text-base leading-relaxed max-w-xl mx-auto font-normal">
+            SecureAI Gateway enforces identity, RBAC, PII redaction, and audit controls 
             before and after IBM Granite inference.
           </p>
-        </div>
 
-        {/* Stats row */}
-        <div className="flex items-center gap-8 mb-10 mt-4">
-          {[
-            { val: '4', label: 'Policy Actions' },
-            { val: '9', label: 'Security Tests' },
-            { val: '100%', label: 'Audit Coverage' },
-            { val: '0', label: 'Raw Data Exposed' },
-          ].map(s => (
-            <div key={s.label} className="text-center">
-              <div className="font-bold" style={{ fontSize: 22, color: '#0f62fe', letterSpacing: '-0.02em' }}>{s.val}</div>
-              <div className="text-xs" style={{ color: '#9ca3af', marginTop: 2 }}>{s.label}</div>
+          {/* 4 Key Metrics Bar */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-6 max-w-xl mx-auto">
+            <div className="p-2.5 rounded-xl bg-slate-900/90 border border-slate-700/60 shadow-md">
+              <div className="text-xl font-bold font-mono text-cyan-400">4</div>
+              <div className="text-[11px] font-semibold text-slate-200 uppercase tracking-wider mt-0.5">Policy Actions</div>
             </div>
-          ))}
-        </div>
-
-        {/* ── Persona Cards ── */}
-        <div className="w-full max-w-4xl px-4 mb-8">
-          <p className="text-xs font-semibold uppercase tracking-widest mb-4 text-center" style={{ color: '#9ca3af' }}>
-            Select your identity to begin a secure session
-          </p>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {EMPLOYEES.map((emp, idx) => {
-              const isSelected = selected === emp.id;
-              const acc = ACCESS[emp.accessLevel];
-              return (
-                <button
-                  key={emp.id}
-                  onClick={() => setSelected(emp.id)}
-                  className={`persona-card ${isSelected ? 'selected' : ''}`}
-                  style={{
-                    opacity: 0,
-                    animation: `slideUp 0.35s cubic-bezier(0.16,1,0.3,1) ${idx * 80 + 100}ms forwards`,
-                  }}
-                >
-                  {/* Selected ring */}
-                  {isSelected && (
-                    <div className="absolute top-3.5 right-3.5">
-                      <CheckCircle size={18} style={{ color: '#0f62fe' }} />
-                    </div>
-                  )}
-
-                  {/* Avatar */}
-                  <div className="flex items-center gap-3 mb-4">
-                    <div className="w-12 h-12 rounded-xl flex items-center justify-center font-bold text-sm flex-shrink-0"
-                      style={{ background: emp.accessLevel === 'full' ? '#eff6ff' : emp.accessLevel === 'aggregate' ? '#fffbeb' : '#fef2f2',
-                        color: emp.accessLevel === 'full' ? '#0f62fe' : emp.accessLevel === 'aggregate' ? '#d97706' : '#dc2626',
-                        fontSize: 14 }}>
-                      {emp.avatarInitials}
-                    </div>
-                    <div>
-                      <p className="font-semibold" style={{ color: '#111827', fontSize: 14 }}>{emp.displayName}</p>
-                      <p className="text-xs" style={{ color: '#9ca3af' }}>{emp.roleName}</p>
-                    </div>
-                  </div>
-
-                  {/* Access badge */}
-                  <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold mb-3"
-                    style={{ background: acc.bg, color: acc.color, border: `1px solid ${acc.border}` }}>
-                    <div className="w-1.5 h-1.5 rounded-full" style={{ background: acc.dot }} />
-                    {acc.label}
-                  </div>
-
-                  {/* Description */}
-                  <p className="text-xs mb-4 leading-relaxed" style={{ color: '#6b7280' }}>{emp.description}</p>
-
-                  {/* Permissions */}
-                  <div className="space-y-1.5">
-                    {emp.permissions.length > 0
-                      ? emp.permissions.map(p => (
-                        <div key={p} className="flex items-center gap-1.5">
-                          <CheckCircle size={11} style={{ color: '#059669', flexShrink: 0 }} />
-                          <span className="text-xs font-mono" style={{ color: '#374151' }}>{p}</span>
-                        </div>
-                      ))
-                      : <div className="flex items-center gap-1.5">
-                        <AlertTriangle size={11} style={{ color: '#dc2626', flexShrink: 0 }} />
-                        <span className="text-xs font-mono" style={{ color: '#9ca3af' }}>NO_PERMISSIONS</span>
-                      </div>
-                    }
-                  </div>
-
-                  <p className="mt-4 text-xs font-mono truncate" style={{ color: '#d1d5db' }}>{emp.email}</p>
-                </button>
-              );
-            })}
+            <div className="p-2.5 rounded-xl bg-slate-900/90 border border-slate-700/60 shadow-md">
+              <div className="text-xl font-bold font-mono text-sky-400">9</div>
+              <div className="text-[11px] font-semibold text-slate-200 uppercase tracking-wider mt-0.5">Security Tests</div>
+            </div>
+            <div className="p-2.5 rounded-xl bg-slate-900/90 border border-slate-700/60 shadow-md">
+              <div className="text-xl font-bold font-mono text-emerald-400">100%</div>
+              <div className="text-[11px] font-semibold text-slate-200 uppercase tracking-wider mt-0.5">Audit Coverage</div>
+            </div>
+            <div className="p-2.5 rounded-xl bg-slate-900/90 border border-slate-700/60 shadow-md">
+              <div className="text-xl font-bold font-mono text-amber-400">0</div>
+              <div className="text-[11px] font-semibold text-slate-200 uppercase tracking-wider mt-0.5">Raw Data Leaked</div>
+            </div>
           </div>
         </div>
 
-        {/* CTA */}
+        {/* Persona Selection Header */}
+        <div className="w-full text-center mb-4">
+          <span className="text-xs font-mono font-bold uppercase tracking-widest text-cyan-300 bg-cyan-950/60 px-3 py-1 rounded-full border border-cyan-800/60">
+            Select Your Identity to Begin a Secure Session
+          </span>
+        </div>
+
+        {/* 3 Persona Cards in High-Contrast Dark Blue */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 w-full mb-8">
+          {EMPLOYEES.map((emp) => {
+            const isSelected = selected === emp.id;
+            const acc = ACCESS_CONFIG[emp.accessLevel];
+            return (
+              <button
+                key={emp.id}
+                onClick={() => setSelected(emp.id)}
+                className={`secure-card ${isSelected ? 'selected' : ''}`}
+              >
+                {/* Checkmark when active */}
+                {isSelected && (
+                  <div className="absolute top-4 right-4 bg-cyan-400 text-slate-950 p-1 rounded-full shadow-lg shadow-cyan-400/50">
+                    <CheckCircle size={16} className="stroke-[3]" />
+                  </div>
+                )}
+
+                {/* Avatar and Info Header */}
+                <div className="flex items-center gap-3.5 mb-4">
+                  <div className="w-12 h-12 rounded-xl flex items-center justify-center font-bold text-sm bg-slate-800 border border-cyan-500/30 text-cyan-300 shadow-inner">
+                    {emp.avatarInitials}
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-white text-[15px] leading-snug">{emp.displayName}</h3>
+                    <p className="text-xs text-slate-300 font-medium">{emp.roleName}</p>
+                  </div>
+                </div>
+
+                {/* Access Level Badge */}
+                <div 
+                  className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold mb-3 border shadow-sm"
+                  style={{ background: acc.bg, color: acc.color, borderColor: acc.border }}
+                >
+                  <div className="w-2 h-2 rounded-full" style={{ background: acc.dot }} />
+                  {acc.label}
+                </div>
+
+                {/* Persona Description */}
+                <p className="text-xs text-slate-200 leading-relaxed mb-4 font-normal">
+                  {emp.description}
+                </p>
+
+                {/* Permissions Breakdown */}
+                <div className="space-y-1.5 pt-2 border-t border-slate-700/60">
+                  {emp.permissions.length > 0 ? (
+                    emp.permissions.map(perm => (
+                      <div key={perm} className="flex items-center gap-2">
+                        <CheckCircle size={13} className="text-emerald-400 flex-shrink-0" />
+                        <span className="text-xs font-mono font-medium text-slate-100">{perm}</span>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <AlertTriangle size={13} className="text-rose-400 flex-shrink-0" />
+                      <span className="text-xs font-mono font-medium text-rose-300">NO_PERMISSIONS</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Email in Clear, Legible Monospace */}
+                <p className="mt-4 text-xs font-mono text-cyan-400/80 truncate">
+                  {emp.email}
+                </p>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Action Button */}
         <div className="flex flex-col items-center gap-3">
           <button
             onClick={handleEnter}
             disabled={!selected || entering}
-            className="btn-primary text-base"
-            style={{ minWidth: 220 }}
+            className="btn-secure-primary"
+            style={{ minWidth: 260 }}
           >
             {entering ? (
               <span className="flex items-center gap-2">
-                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full" style={{ animation: 'spin 0.7s linear infinite' }} />
-                Authenticating...
+                <div className="w-4 h-4 border-2 border-slate-950/40 border-t-slate-950 rounded-full animate-spin" />
+                Authenticating Session...
               </span>
             ) : (
-              <span className="flex items-center gap-2">
-                {selected ? `Continue as ${selectedEmp?.firstName}` : 'Select a Persona'}
-                {selected && <ArrowRight size={16} />}
+              <span className="flex items-center justify-center gap-2 w-full">
+                {selected ? `Enter as ${selectedEmp?.firstName}` : 'Select a Persona to Enter'}
+                <ArrowRight size={16} />
               </span>
             )}
           </button>
+
           {selected && (
-            <p className="text-xs animate-fade" style={{ color: '#9ca3af' }}>
-              Signing in as <strong style={{ color: '#374151' }}>{selectedEmp?.displayName}</strong> · {selectedEmp?.roleName}
+            <p className="text-xs font-mono text-slate-300">
+              Session Identity: <strong className="text-cyan-300">{selectedEmp?.displayName}</strong> ({selectedEmp?.roleName})
             </p>
           )}
         </div>
 
-        {/* Tech stack */}
+        {/* Footer Badges */}
         <div className="flex flex-wrap justify-center gap-2 mt-8">
-          {['IBM LinuxONE · s390x', 'IBM Granite 13B', 'Go + FastAPI', 'PostgreSQL 16', 'MS Presidio'].map(t => (
-            <span key={t} className="tech-tag">{t}</span>
+          {[
+            'IBM LinuxONE · s390x',
+            'IBM Granite 13B',
+            'Microsoft Presidio PII',
+            'Go Gateway Core',
+            'PostgreSQL 16'
+          ].map(tag => (
+            <span key={tag} className="text-xs font-mono px-3 py-1 rounded-md bg-slate-900/90 text-slate-300 border border-slate-800">
+              {tag}
+            </span>
           ))}
         </div>
 
-        <p className="mt-6 text-xs" style={{ color: '#d1d5db' }}>
-          Advisory prototype · Synthetic data only · Apache 2.0
-        </p>
       </div>
     </div>
   );

@@ -112,6 +112,38 @@ let _auditStore: AuditEvent[] = [
   },
 ];
 
+// ── Live Backend Synchronization ──────────────────────────────────
+
+export async function syncAuditEvents(): Promise<void> {
+  try {
+    const res = await fetch('/api/v1/audit', { signal: AbortSignal.timeout(2000) });
+    if (res.ok) {
+      const data = await res.json();
+      if (data.audit_events && Array.isArray(data.audit_events)) {
+        _auditStore = data.audit_events.map((e: any) => ({
+          eventId: e.eventId,
+          timestamp: new Date(e.timestamp),
+          userReference: e.userReference,
+          targetResource: e.targetResource,
+          outcome: e.outcome,
+          policyAction: e.policyAction,
+          reasonCode: e.reasonCode,
+          requestId: e.requestId,
+          latencyMs: e.latencyMs,
+        }));
+      }
+    }
+  } catch {
+    // Keep local store if backend offline
+  }
+}
+
+// Start periodic audit sync in browser
+if (typeof window !== 'undefined') {
+  syncAuditEvents();
+  setInterval(syncAuditEvents, 2000);
+}
+
 // ── Main Request Handler ──────────────────────────────────────────
 
 export async function sendChatMessage(
@@ -119,6 +151,54 @@ export async function sendChatMessage(
   userMessage: string,
   conversationHistory: { role: string; content: string }[]
 ): Promise<ApiResponse> {
+  // 1. Attempt Live Go Backend API (/api/v1/chat)
+  try {
+    const res = await fetch('/api/v1/chat', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Demo-User-Role': employee.roleId,
+        'X-Demo-User-Id': employee.id,
+      },
+      body: JSON.stringify({
+        query: userMessage,
+        target_account: '9577690',
+      }),
+      signal: AbortSignal.timeout(9000),
+    });
+
+    const data = await res.json();
+    syncAuditEvents();
+
+    if (data && data.security) {
+      return {
+        answer: data.answer,
+        error: data.error,
+        security: {
+          policyAction: data.security.policyAction,
+          piiDetected: data.security.piiDetected ?? 0,
+          piiRedacted: data.security.piiRedacted ?? 0,
+          piiTypes: data.security.piiTypes ?? [],
+          fieldsStripped: data.security.fieldsStripped ?? 0,
+          strippedFields: data.security.strippedFields ?? [],
+          auditEventId: data.security.auditEventId || `evt_${uid()}`,
+          modelAdapter: data.security.modelAdapter || 'mock-inference-v1',
+          latencyMs: data.security.latencyMs ?? 50,
+          isBlocked: data.security.isBlocked ?? (res.status >= 400),
+          blockReason: data.security.blockReason,
+          sanitizedPayloadSizeBytes: data.security.sanitizedPayloadSizeBytes ?? 240,
+          injectionAttemptDetected: data.security.injectionAttemptDetected ?? false,
+          promptTokens: data.security.promptTokens ?? 142,
+          dbRowsFetched: data.security.dbRowsFetched ?? 0,
+          aiCallMade: data.security.aiCallMade ?? false,
+        },
+      };
+    }
+  } catch (err) {
+    console.warn('Backend API request failed, falling back to local simulation:', err);
+  }
+
+  // 2. Fallback to Local Simulation (if Go backend is offline)
   const isInjection = detectInjection(userMessage);
   const { count: piiCount, types: piiTypes } = detectPII(userMessage);
 

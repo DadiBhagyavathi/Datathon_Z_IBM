@@ -293,12 +293,12 @@ Open **`http://localhost:5173`** in your browser.
 - [x] Unit tests for policy and RBAC (`go test -v ./...` passing 100%) in [`backend-go/tests/security_test.go`](file:///home/rubberducky/projects/hackathon/Datathon_Z_IBM/backend-go/tests/security_test.go)
 
 ### Milestone 5: Python AI Engine
-- [ ] FastAPI service setup (`ai-engine/app/main.py`)
-- [ ] `/internal/v1/analyze` endpoint with Pydantic request/response validation
-- [ ] PII detection & anonymization pipeline (Presidio / regex fallback)
-- [ ] Model inference adapter layer (IBM Granite adapter + labeled Mock adapter)
-- [ ] Response disclosure guardrail (checks generated answers for leaked identifiers)
-- [ ] Pytest suite (`pytest tests/`)
+- [x] FastAPI service setup ([`ai-engine/app/main.py`](file:///home/rubberducky/projects/hackathon/Datathon_Z_IBM/ai-engine/app/main.py))
+- [x] `/internal/v1/analyze` endpoint with Pydantic request/response validation in [`ai-engine/app/schemas.py`](file:///home/rubberducky/projects/hackathon/Datathon_Z_IBM/ai-engine/app/schemas.py)
+- [x] PII detection & anonymization pipeline (Microsoft Presidio + custom regex rules) in [`ai-engine/app/pii/sanitizer.py`](file:///home/rubberducky/projects/hackathon/Datathon_Z_IBM/ai-engine/app/pii/sanitizer.py)
+- [x] Model inference adapter layer (IBM Granite adapter + labeled Mock adapter) in [`ai-engine/app/inference/adapter.py`](file:///home/rubberducky/projects/hackathon/Datathon_Z_IBM/ai-engine/app/inference/adapter.py)
+- [x] Response disclosure guardrail (checks generated answers for leaked identifiers) in [`ai-engine/app/response_checks/checker.py`](file:///home/rubberducky/projects/hackathon/Datathon_Z_IBM/ai-engine/app/response_checks/checker.py)
+- [x] Pytest suite (7/7 tests passing in [`ai-engine/tests/`](file:///home/rubberducky/projects/hackathon/Datathon_Z_IBM/ai-engine/tests/))
 
 ### Milestone 6: React Frontend Interface
 - [x] React + TypeScript + Tailwind project scaffolding ([`frontend/`](file:///home/rubberducky/projects/hackathon/Datathon_Z_IBM/frontend/))
@@ -309,15 +309,15 @@ Open **`http://localhost:5173`** in your browser.
 - [x] Audit log inspection modal/drawer in [`frontend/src/components/AuditDrawer.tsx`](file:///home/rubberducky/projects/hackathon/Datathon_Z_IBM/frontend/src/components/AuditDrawer.tsx)
 
 ### Milestone 7: Automated Security Tests
-- [ ] Test 1: Authorized request succeeds with minimal context
-- [ ] Test 2: Unauthorized record request blocked before DB retrieval
-- [ ] Test 3: Synthetic PII correctly scrubbed
-- [ ] Test 4: Model-bound payload verified free of prohibited fields
-- [ ] Test 5: Prompt injection attack fails to bypass server SQL controls
-- [ ] Test 6: Response disclosure checks catch prohibited leakage
-- [ ] Test 7: Audit log records decisions without sensitive secrets
-- [ ] Test 8: AI engine offline $\rightarrow$ Go fails closed safely
-- [ ] Test 9: Policy evaluation error $\rightarrow$ Go fails closed safely
+- [x] Test 1: Authorized request succeeds with minimal context ([`scripts/run_security_tests.sh`](file:///home/rubberducky/projects/hackathon/Datathon_Z_IBM/scripts/run_security_tests.sh))
+- [x] Test 2: Unauthorized record request blocked before DB retrieval (HTTP 403 Forbidden)
+- [x] Test 3: Synthetic PII correctly scrubbed (Presidio sanitizer verified)
+- [x] Test 4: Model-bound payload verified free of prohibited fields (`fieldsStripped` verified)
+- [x] Test 5: Prompt injection attack fails to bypass server SQL controls (Blocked by policy engine)
+- [x] Test 6: Response disclosure checks catch prohibited leakage
+- [x] Test 7: Audit log records decisions without sensitive secrets (`audit_events` verified)
+- [x] Test 8: AI engine offline $\rightarrow$ Go fails closed safely (Fallback mock & fail-closed error)
+- [x] Test 9: Policy evaluation error $\rightarrow$ Go fails closed safely (Default-deny evaluation)
 
 ### Milestone 8: Deployment & Packaging
 - [x] Containerfile for Go backend ([`deployment/Containerfile.backend`](file:///home/rubberducky/projects/hackathon/Datathon_Z_IBM/deployment/Containerfile.backend))

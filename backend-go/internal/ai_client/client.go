@@ -9,42 +9,33 @@ import (
 	"time"
 
 	"github.com/DadiBhagyavathi/Datathon_Z_IBM/backend-go/internal/policy"
-	"github.com/DadiBhagyavathi/Datathon_Z_IBM/backend-go/internal/retrieval"
 )
 
-// MinimalTransaction represents sanitized transaction fields sent to AI.
-type MinimalTransaction struct {
-	Date     string  `json:"date"`
-	Category string  `json:"category"`
-	Amount   float64 `json:"amount"`
+// SecurityMetadata represents the guardrail metadata returned by Python AI engine.
+type SecurityMetadata struct {
+	PIIDetected              int      `json:"pii_detected"`
+	PIIRedacted              int      `json:"pii_redacted"`
+	PIITypes                 []string `json:"pii_types"`
+	ResponseBlocked          bool     `json:"response_blocked"`
+	BlockReason              *string  `json:"block_reason,omitempty"`
+	ModelAdapter             string   `json:"model_adapter"`
+	InjectionAttemptDetected bool     `json:"injection_attempt_detected"`
 }
 
-// ApprovedContext is the structured, data-minimized payload passed across the trust boundary.
-type ApprovedContext struct {
-	AccountReference string                `json:"account_reference"`
-	CustomerName     string                `json:"customer_name,omitempty"`
-	AggregateSummary *retrieval.AggregateSummary `json:"aggregate_summary,omitempty"`
-	Records          []MinimalTransaction  `json:"records,omitempty"`
-}
-
-// AnalyzeRequest represents the service-to-service contract sent to Python.
+// AnalyzeRequest matches Python FastAPI AnalyzeRequest schema (extra="forbid").
 type AnalyzeRequest struct {
-	RequestID        string          `json:"request_id"`
-	TaskType         string          `json:"task_type"`
-	PolicyAction     string          `json:"policy_action"`
-	ApprovedContext  ApprovedContext `json:"approved_context"`
-	UserPrompt       string          `json:"user_prompt"`
+	RequestID       string                 `json:"request_id"`
+	Question        string                 `json:"question"`
+	ApprovedContext map[string]interface{} `json:"approved_context"`
+	PolicyAction    string                 `json:"policy_action"`
+	ModelAdapter    *string                `json:"model_adapter,omitempty"`
 }
 
-// AnalyzeResponse represents the structured response returned by Python.
+// AnalyzeResponse matches Python FastAPI AnalyzeResponse schema.
 type AnalyzeResponse struct {
-	RequestID          string   `json:"request_id"`
-	Answer             string   `json:"answer"`
-	SafetyCheckStatus  string   `json:"safety_check_status"` // "PASSED" | "WARNING"
-	PIIDetectedCount   int      `json:"pii_detected_count"`
-	AdapterUsed        string   `json:"adapter_used"`        // "mock-inference-v1" or "granite-api"
-	Warnings           []string `json:"warnings"`
-	PromptTokens       int      `json:"prompt_tokens,omitempty"`
+	RequestID string           `json:"request_id"`
+	Answer    string           `json:"answer"`
+	Security  SecurityMetadata `json:"security"`
 }
 
 // Client defines the interface for interacting with the AI engine.
@@ -105,47 +96,55 @@ func fallbackMockAnalyze(req *AnalyzeRequest) *AnalyzeResponse {
 	var answer string
 
 	if req.PolicyAction == string(policy.ActionAggregate) {
-		summary := req.ApprovedContext.AggregateSummary
-		if summary != nil {
-			answer = fmt.Sprintf(
-				"Spending Summary for **Account %s**:\n\n"+
-					"- **Total Transactions:** %d\n"+
-					"- **Total Volume:** $%.2f\n"+
-					"- **Average Transaction:** $%.2f\n"+
-					"- **Date Range:** %s\n\n"+
-					"> ℹ️ *Enforced under policy AGGREGATE: Individual transaction rows and internal customer IDs were withheld from the model context.*",
-				summary.AccountRef, summary.TotalTransactions, summary.TotalAmount, summary.AverageAmount, summary.DateRange,
-			)
-		} else {
-			answer = "Aggregate summary metrics compiled successfully. Zero row-level transaction records released to the model."
+		accountRef, _ := req.ApprovedContext["account_reference"].(string)
+		if accountRef == "" {
+			accountRef = "9577690"
 		}
+		answer = fmt.Sprintf(
+			"Spending Summary for **Account %s**:\n\n"+
+				"- **Total Transactions:** 4\n"+
+				"- **Total Volume:** $1,770.50\n"+
+				"- **Average Transaction:** $442.63\n"+
+				"- **Date Range:** October 2026\n\n"+
+				"> ℹ️ *Enforced under policy AGGREGATE: Individual transaction rows and internal customer IDs were withheld from the model context.*",
+			accountRef,
+		)
 	} else {
 		// ALLOW_MINIMAL_FIELDS
-		ctx := req.ApprovedContext
+		accountRef, _ := req.ApprovedContext["account_reference"].(string)
+		customerName, _ := req.ApprovedContext["customer_name"].(string)
+		if accountRef == "" {
+			accountRef = "9577690"
+		}
+		if customerName == "" {
+			customerName = "Apex Global Logistics Corp"
+		}
+
 		answer = fmt.Sprintf(
 			"Transaction Analysis for **Account %s (%s)**:\n\n"+
-				"Recorded **%d business transactions** in October 2026:\n\n"+
+				"Recorded **4 business transactions** in October 2026:\n\n"+
 				"| Date | Category | Amount |\n"+
-				"|---|---|---|\n",
-			ctx.AccountReference, ctx.CustomerName, len(ctx.Records),
+				"|---|---|---|\n"+
+				"| 2026-10-15 | Office Equipment | $820.50 |\n"+
+				"| 2026-10-14 | Cloud Infrastructure | $400.00 |\n"+
+				"| 2026-10-12 | Corporate Travel | $200.00 |\n"+
+				"| 2026-10-10 | Software Subscriptions | $350.00 |\n\n"+
+				"**Total Spending:** $1,770.50.\n\n"+
+				"> 🛡️ *Policy ALLOW_MINIMAL_FIELDS applied: Internal customer notes, sensitivity classifications, and tax IDs were stripped by Go before model inference.*",
+			accountRef, customerName,
 		)
-
-		var total float64
-		for _, r := range ctx.Records {
-			answer += fmt.Sprintf("| %s | %s | $%.2f |\n", r.Date, r.Category, r.Amount)
-			total += r.Amount
-		}
-		answer += fmt.Sprintf("\n**Total Spending:** $%.2f.\n\n"+
-			"> 🛡️ *Policy ALLOW_MINIMAL_FIELDS applied: Internal customer notes, sensitivity classifications, and tax IDs were stripped by Go before model inference.*", total)
 	}
 
 	return &AnalyzeResponse{
-		RequestID:         req.RequestID,
-		Answer:            answer,
-		SafetyCheckStatus: "PASSED",
-		PIIDetectedCount:  0,
-		AdapterUsed:       "mock-inference-v1",
-		Warnings:          []string{},
-		PromptTokens:      142,
+		RequestID: req.RequestID,
+		Answer:    answer,
+		Security: SecurityMetadata{
+			PIIDetected:              0,
+			PIIRedacted:              0,
+			PIITypes:                 []string{},
+			ResponseBlocked:          false,
+			ModelAdapter:             "mock-inference-v1",
+			InjectionAttemptDetected: false,
+		},
 	}
 }

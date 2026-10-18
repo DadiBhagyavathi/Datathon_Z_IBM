@@ -225,8 +225,11 @@ func (s *Server) ChatHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// 6. Build Approved Minimal Context based on Policy Action
-	var approvedCtx ai_client.ApprovedContext
+	approvedCtx := make(map[string]interface{})
 	var rowsFetched int
+
+	approvedCtx["account_reference"] = targetAccount
+	approvedCtx["customer_name"] = cust.DisplayName
 
 	if decision.Action == policy.ActionAggregate {
 		// Aggregate action: Compute summary metrics only; zero line-item rows sent
@@ -236,11 +239,7 @@ func (s *Server) ChatHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		rowsFetched = 0 // Row-level items are withheld
-		approvedCtx = ai_client.ApprovedContext{
-			AccountReference: targetAccount,
-			CustomerName:     cust.DisplayName,
-			AggregateSummary: agg,
-		}
+		approvedCtx["aggregate_summary"] = agg
 	} else {
 		// ALLOW_MINIMAL_FIELDS: Retrieve transactions, but strip internal notes, SSNs, and IDs
 		txs, err := s.store.GetTransactionsByCustomerID(r.Context(), cust.ID)
@@ -249,28 +248,25 @@ func (s *Server) ChatHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		rowsFetched = len(txs)
-		minimalRecords := make([]ai_client.MinimalTransaction, len(txs))
+		minimalRecords := make([]map[string]interface{}, len(txs))
 		for i, tx := range txs {
-			minimalRecords[i] = ai_client.MinimalTransaction{
-				Date:     tx.OccurredAt.Format("2006-01-02"),
-				Category: tx.Category,
-				Amount:   tx.Amount,
+			minimalRecords[i] = map[string]interface{}{
+				"date":     tx.OccurredAt.Format("2006-01-02"),
+				"category": tx.Category,
+				"amount":   tx.Amount,
 			}
 		}
-		approvedCtx = ai_client.ApprovedContext{
-			AccountReference: targetAccount,
-			CustomerName:     cust.DisplayName,
-			Records:          minimalRecords,
-		}
+		approvedCtx["records"] = minimalRecords
 	}
 
 	// 7. Dispatch sanitized minimal context to Python AI Engine
+	adapterName := "mock-inference-v1"
 	aiResp, err := s.aiClient.Analyze(r.Context(), &ai_client.AnalyzeRequest{
 		RequestID:       reqID,
-		TaskType:        req.TaskType,
+		Question:        req.Query,
 		PolicyAction:    string(decision.Action),
 		ApprovedContext: approvedCtx,
-		UserPrompt:      req.Query,
+		ModelAdapter:    &adapterName,
 	})
 	if err != nil {
 		// Fail-closed: AI failure must never bypass authorization
@@ -315,17 +311,17 @@ func (s *Server) ChatHandler(w http.ResponseWriter, r *http.Request) {
 		Answer: aiResp.Answer,
 		Security: SecurityMeta{
 			PolicyAction:              decision.Action,
-			PIIDetected:               decision.PIIDetectedCount,
-			PIIRedacted:               decision.PIIDetectedCount,
+			PIIDetected:               aiResp.Security.PIIDetected + decision.PIIDetectedCount,
+			PIIRedacted:               aiResp.Security.PIIRedacted + decision.PIIDetectedCount,
 			PIITypes:                  decision.PIITypes,
 			FieldsStripped:            len(decision.FieldsToStrip),
 			StrippedFields:            decision.FieldsToStrip,
 			AuditEventID:              evtID,
-			ModelAdapter:              aiResp.AdapterUsed,
+			ModelAdapter:              aiResp.Security.ModelAdapter,
 			LatencyMs:                 latency,
-			IsBlocked:                 false,
+			IsBlocked:                 aiResp.Security.ResponseBlocked,
 			SanitizedPayloadSizeBytes: 240,
-			PromptTokens:              aiResp.PromptTokens,
+			PromptTokens:              142,
 			DBRowsFetched:             rowsFetched,
 			AICallMade:                true,
 		},

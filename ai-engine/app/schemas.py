@@ -18,6 +18,7 @@ class SecurityMetadata(BaseModel):
     response_blocked: bool
     block_reason: str | None = None
     model_adapter: str
+    injection_attempt_detected: bool = False
 
 class AnalyzeResponse(BaseModel):
     request_id: str
